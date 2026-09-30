@@ -14,6 +14,9 @@ import androidx.lifecycle.ProcessLifecycleOwner
 import com.eyecontrol.core.constants.DwellConfiguration
 import com.eyecontrol.core.constants.NativeConstants
 import com.eyecontrol.core.logging.AppLogger
+import com.eyecontrol.data.calibration.CalibrationSample
+import com.eyecontrol.data.calibration.CalibrationStore
+import com.eyecontrol.data.calibration.RidgeCalibrationModel
 import com.eyecontrol.data.camera.CameraController
 import com.eyecontrol.data.repository.NativeGazeRepository
 import com.eyecontrol.service.TouchAccessibilityService
@@ -24,10 +27,14 @@ import io.flutter.plugin.common.MethodChannel
 class MainActivity : FlutterActivity() {
     private val gazeRepository = NativeGazeRepository()
     private lateinit var cameraController: CameraController
+    private lateinit var calibrationStore: CalibrationStore
+    private val calibrationModel = RidgeCalibrationModel()
     private var cameraRequested = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        calibrationStore = CalibrationStore(this)
+        calibrationStore.read()?.let(calibrationModel::restore)
         cameraController = CameraController(this, ProcessLifecycleOwner.get(), gazeRepository)
     }
 
@@ -80,6 +87,90 @@ class MainActivity : FlutterActivity() {
                     }
 
                     "accessibility.isEnabled" -> result.success(isAccessibilityEnabled())
+
+                    "gaze.latest" -> {
+                        val frame = gazeRepository.latest.value
+                        if (frame == null) {
+                            result.success(null)
+                        } else {
+                            result.success(
+                                mapOf(
+                                    "x" to frame.x.toDouble(),
+                                    "y" to frame.y.toDouble(),
+                                    "confidence" to frame.confidence.toDouble(),
+                                    "timestampMs" to frame.timestampMs,
+                                    "blinking" to frame.blinking,
+                                ),
+                            )
+                        }
+                    }
+
+                    "screen.size" -> result.success(
+                        mapOf(
+                            "width" to resources.displayMetrics.widthPixels,
+                            "height" to resources.displayMetrics.heightPixels,
+                        ),
+                    )
+
+                    "calibration.isReady" -> result.success(calibrationModel.isFitted())
+
+                    "calibration.fit" -> {
+                        @Suppress("UNCHECKED_CAST")
+                        val rawSamples = call.argument<List<Map<String, Any?>>>("samples")
+                            ?: return@setMethodCallHandler result.error(
+                                "INVALID_ARGUMENT",
+                                "Missing calibration samples.",
+                                null,
+                            )
+                        if (rawSamples.size < 9) {
+                            return@setMethodCallHandler result.error(
+                                "INVALID_ARGUMENT",
+                                "Nine calibration samples are required.",
+                                null,
+                            )
+                        }
+                        val samples = rawSamples.map { sample ->
+                            CalibrationSample(
+                                x = (sample["x"] as Number).toFloat(),
+                                y = (sample["y"] as Number).toFloat(),
+                                targetX = (sample["targetX"] as Number).toFloat(),
+                                targetY = (sample["targetY"] as Number).toFloat(),
+                            )
+                        }
+                        calibrationModel.fit(samples)
+                        calibrationModel.serialize()?.let(calibrationStore::write)
+                        result.success(null)
+                    }
+
+                    "calibration.predict" -> {
+                        val x = call.argument<Double>("x")
+                            ?: return@setMethodCallHandler result.error(
+                                "INVALID_ARGUMENT",
+                                "Missing x.",
+                                null,
+                            )
+                        val y = call.argument<Double>("y")
+                            ?: return@setMethodCallHandler result.error(
+                                "INVALID_ARGUMENT",
+                                "Missing y.",
+                                null,
+                            )
+                        if (!calibrationModel.isFitted()) {
+                            return@setMethodCallHandler result.error(
+                                "CALIBRATION_REQUIRED",
+                                "Calibration has not been completed.",
+                                null,
+                            )
+                        }
+                        val point = calibrationModel.predict(x.toFloat(), y.toFloat())
+                        result.success(mapOf("x" to point.first, "y" to point.second))
+                    }
+
+                    "calibration.clear" -> {
+                        calibrationModel.clear()
+                        calibrationStore.clear()
+                        result.success(null)
+                    }
 
                     "gesture.tap" -> {
                         val x = call.argument<Double>("x")
