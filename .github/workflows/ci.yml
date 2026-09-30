@@ -23,6 +23,8 @@ jobs:
         run: flutter analyze
       - name: Flutter tests with coverage
         run: flutter test --coverage --no-pub
+      - name: Install lcov
+        run: sudo apt-get update && sudo apt-get install -y lcov
       - name: Coverage summary
         run: lcov --summary coverage/lcov.info
       - name: Upload Flutter coverage
