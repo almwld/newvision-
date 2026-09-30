@@ -84,31 +84,29 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.4'
-      - name: Generate Gradle wrapper for Flutter release build
-        working-directory: android
-        run: gradle --no-daemon wrapper --gradle-version 8.4
       - name: Fetch and verify MediaPipe model
         run: bash scripts/fetch_face_landmarker.sh
-      - name: Build release APKs
-        run: flutter build apk --release --split-per-abi --no-shrink
+      - name: Build split release APKs
+        working-directory: android
+        run: gradle --no-daemon :app:assembleRelease
       - name: Upload arm64-v8a
         uses: actions/upload-artifact@v4
         with:
           name: app-arm64-v8a-release
-          path: build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
+          path: android/app/build/outputs/apk/release/app-arm64-v8a-release.apk
           if-no-files-found: error
           retention-days: 30
       - name: Upload armeabi-v7a
         uses: actions/upload-artifact@v4
         with:
           name: app-armeabi-v7a-release
-          path: build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk
+          path: android/app/build/outputs/apk/release/app-armeabi-v7a-release.apk
           if-no-files-found: error
           retention-days: 30
       - name: Upload x86_64
         uses: actions/upload-artifact@v4
         with:
           name: app-x86_64-release
-          path: build/app/outputs/flutter-apk/app-x86_64-release.apk
+          path: android/app/build/outputs/apk/release/app-x86_64-release.apk
           if-no-files-found: error
           retention-days: 30
