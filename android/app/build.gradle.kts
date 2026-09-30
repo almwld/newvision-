@@ -16,6 +16,15 @@ android {
         versionName = "1.0"
     }
 
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            include("armeabi-v7a", "arm64-v8a", "x86_64")
+            isUniversalApk = false
+        }
+    }
+
     val releaseStorePath = System.getenv("ANDROID_KEYSTORE_PATH")
     val releaseStorePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD")
     val releaseKeyAlias = System.getenv("ANDROID_KEY_ALIAS")
