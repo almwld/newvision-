@@ -13,7 +13,7 @@ android {
         minSdk = 24
         targetSdk = 34
         versionCode = 1
-        versionName = "1.0"
+        versionName = "1.0.0"
     }
 
     splits {
@@ -47,8 +47,8 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
-            isShrinkResources = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             if (!releaseStorePath.isNullOrBlank()) {
                 signingConfig = signingConfigs.findByName("release")
             }
@@ -70,6 +70,17 @@ android {
 
     androidResources {
         noCompress += "task"
+    }
+
+    packaging {
+        resources {
+            excludes += setOf(
+                "META-INF/AL2.0",
+                "META-INF/LGPL2.1",
+                "META-INF/LICENSE*",
+                "META-INF/NOTICE*",
+            )
+        }
     }
 }
 
