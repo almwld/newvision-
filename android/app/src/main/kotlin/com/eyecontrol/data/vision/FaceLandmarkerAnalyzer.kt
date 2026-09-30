@@ -7,8 +7,7 @@ import android.os.SystemClock
 import androidx.camera.core.ImageProxy
 import com.eyecontrol.core.constants.NativeConstants
 import com.eyecontrol.core.logging.AppLogger
-import com.eyecontrol.data.filter.GazeSmoother
-import com.eyecontrol.domain.model.GazeFrame
+import com.eyecontrol.domain.model.GazeSample
 import com.eyecontrol.domain.repository.GazeRepository
 import com.google.mediapipe.framework.image.BitmapImageBuilder
 import com.google.mediapipe.framework.image.MPImage
@@ -21,21 +20,14 @@ import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.hypot
 import kotlin.math.min
 
-/**
- * Converts CameraX RGBA frames to MediaPipe and extracts both iris centers and blink state.
- *
- * CameraX is configured to emit RGBA_8888, so the luminance plane is never misread as ARGB.
- */
 class FaceLandmarkerAnalyzer(
     context: Context,
     private val repository: GazeRepository,
 ) : AutoCloseable {
-
     private val closed = AtomicBoolean(false)
     private val landmarker: FaceLandmarker
     private val blinkDetector = BlinkDetector()
     private val irisNormalizer = IrisNormalizer()
-    private val smoother = GazeSmoother()
 
     init {
         val baseOptions = BaseOptions.builder()
@@ -60,40 +52,27 @@ class FaceLandmarkerAnalyzer(
             imageProxy.close()
             return
         }
-
         val timestamp = SystemClock.uptimeMillis()
         try {
             val plane = imageProxy.planes.firstOrNull()
                 ?: throw IllegalStateException("Camera returned no RGBA plane.")
             val buffer = plane.buffer
             buffer.rewind()
-
             val bitmap = Bitmap.createBitmap(
                 imageProxy.width,
                 imageProxy.height,
                 Bitmap.Config.ARGB_8888,
             )
             bitmap.copyPixelsFromBuffer(buffer)
-
             val matrix = Matrix().apply {
                 postRotate(imageProxy.imageInfo.rotationDegrees.toFloat())
                 if (frontCamera) postScale(-1f, 1f, 0f, 0f)
             }
             val transformed = Bitmap.createBitmap(
-                bitmap,
-                0,
-                0,
-                bitmap.width,
-                bitmap.height,
-                matrix,
-                true,
+                bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true,
             )
             if (transformed !== bitmap) bitmap.recycle()
-
-            landmarker.detectAsync(
-                BitmapImageBuilder(transformed).build(),
-                timestamp,
-            )
+            landmarker.detectAsync(BitmapImageBuilder(transformed).build(), timestamp)
         } catch (error: Exception) {
             AppLogger.e("Frame analysis failed", error)
         } finally {
@@ -106,39 +85,57 @@ class FaceLandmarkerAnalyzer(
         val landmarks = result.faceLandmarks().firstOrNull() ?: return
         if (landmarks.size < 478) return
 
-        val rightIris = listOf(landmarks[473])
-        val leftIris = listOf(landmarks[468])
+        val rightIris = listOf(
+            landmarks[473], landmarks[474], landmarks[475], landmarks[476], landmarks[477],
+        )
+        val leftIris = listOf(
+            landmarks[468], landmarks[469], landmarks[470], landmarks[471], landmarks[472],
+        )
         val rightNormalized = irisNormalizer.normalize(
-            rightIris,
-            landmarks[33] to landmarks[133],
+            rightIris, landmarks[33] to landmarks[133],
         )
         val leftNormalized = irisNormalizer.normalize(
-            leftIris,
-            landmarks[362] to landmarks[263],
+            leftIris, landmarks[362] to landmarks[263],
         )
         if (rightNormalized == null || leftNormalized == null) return
-
-        val gazeX = ((rightNormalized.first + leftNormalized.first) * 0.5f).coerceIn(0f, 1f)
-        val gazeY = ((rightNormalized.second + leftNormalized.second) * 0.5f).coerceIn(0f, 1f)
 
         val rightEye = eyeContour(landmarks, intArrayOf(33, 160, 158, 133, 153, 144))
         val leftEye = eyeContour(landmarks, intArrayOf(362, 385, 387, 263, 373, 380))
         val blinking = blinkDetector.update(leftEye, rightEye)
 
+        val rawX = ((rightNormalized.first + leftNormalized.first) * 0.5f).coerceIn(0f, 1f)
+        val rawY = ((rightNormalized.second + leftNormalized.second) * 0.5f).coerceIn(0f, 1f)
         val faceWidth = (landmarks.maxOf { it.x() } - landmarks.minOf { it.x() }).coerceAtLeast(0f)
         val faceHeight = (landmarks.maxOf { it.y() } - landmarks.minOf { it.y() }).coerceAtLeast(0f)
         val diagonal = hypot(faceWidth.toDouble(), faceHeight.toDouble()).toFloat()
         val confidence = min(1f, diagonal * 1.5f).coerceIn(0.1f, 1f)
+        val pupilDiameter = (irisDiameter(leftIris) + irisDiameter(rightIris)) * 0.5f
 
         repository.publish(
-            smoother.filter(GazeFrame(
-                x = gazeX,
-                y = gazeY,
+            GazeSample(
+                rawX = rawX,
+                rawY = rawY,
+                leftIrisX = leftNormalized.first,
+                leftIrisY = leftNormalized.second,
+                rightIrisX = rightNormalized.first,
+                rightIrisY = rightNormalized.second,
                 confidence = confidence,
-                timestampMs = result.timestampMs(),
-                blinking = blinking,
-            )),
+                pupilDiameter = pupilDiameter,
+                eyeOpen = !blinking,
+                timestampNs = result.timestampMs() * 1_000_000L,
+            ),
         )
+    }
+
+    private fun irisDiameter(iris: List<NormalizedLandmark>): Float {
+        if (iris.size < 5) return 0f
+        val center = iris.first()
+        return iris.drop(1).map {
+            hypot(
+                (it.x() - center.x()).toDouble(),
+                (it.y() - center.y()).toDouble(),
+            ).toFloat()
+        }.average().toFloat() * 2f
     }
 
     private fun eyeContour(
@@ -148,7 +145,6 @@ class FaceLandmarkerAnalyzer(
 
     override fun close() {
         if (closed.compareAndSet(false, true)) {
-            smoother.reset()
             blinkDetector.reset()
             landmarker.close()
         }

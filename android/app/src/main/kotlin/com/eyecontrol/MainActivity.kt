@@ -17,15 +17,15 @@ import androidx.lifecycle.repeatOnLifecycle
 import com.eyecontrol.core.constants.DwellConfiguration
 import com.eyecontrol.core.constants.NativeConstants
 import com.eyecontrol.core.logging.AppLogger
+import com.eyecontrol.data.calibration.CalibrationManager
 import com.eyecontrol.data.calibration.CalibrationSample
 import com.eyecontrol.data.calibration.CalibrationStore
-import com.eyecontrol.data.calibration.RidgeCalibrationModel
 import com.eyecontrol.data.camera.CameraController
+import com.eyecontrol.data.repository.NativeGazeRepository
 import com.eyecontrol.domain.model.GazeFrame
 import com.eyecontrol.domain.usecase.DwellController
-import com.eyecontrol.service.OverlayCursorService
 import com.eyecontrol.service.HapticFeedback
-import com.eyecontrol.data.repository.NativeGazeRepository
+import com.eyecontrol.service.OverlayCursorService
 import com.eyecontrol.service.TouchAccessibilityService
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -34,37 +34,41 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
 class MainActivity : FlutterActivity() {
-    private val gazeRepository = NativeGazeRepository()
+    private lateinit var gazeRepository: NativeGazeRepository
+    private lateinit var calibrationManager: CalibrationManager
     private lateinit var cameraController: CameraController
-    private lateinit var calibrationStore: CalibrationStore
     private lateinit var dwellController: DwellController
     private lateinit var hapticFeedback: HapticFeedback
-    private val calibrationModel = RidgeCalibrationModel()
     private var cameraRequested = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        calibrationStore = CalibrationStore(this)
-        calibrationStore.read()?.let(calibrationModel::restore)
+        calibrationManager = CalibrationManager(CalibrationStore(this))
+        gazeRepository = NativeGazeRepository(
+            calibrationManager = calibrationManager,
+            screenWidth = resources.displayMetrics.widthPixels,
+            screenHeight = resources.displayMetrics.heightPixels,
+        )
         cameraController = CameraController(this, ProcessLifecycleOwner.get(), gazeRepository)
         hapticFeedback = HapticFeedback(this)
         dwellController = DwellController(onDwell = ::performDwellTap)
+
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.RESUMED) {
-                gazeRepository.latest.collectLatest { frame ->
-                    if (frame == null || frame.blinking || frame.confidence < 0.25f) return@collectLatest
-                    val point = if (calibrationModel.isFitted()) {
-                        calibrationModel.predict(frame.x, frame.y)
-                    } else {
-                        Pair(frame.x, frame.y)
-                    }
-                    val width = resources.displayMetrics.widthPixels
-                    val height = resources.displayMetrics.heightPixels
-                    val screenX = (point.first * width).toInt().coerceIn(0, width - 1)
-                    val screenY = (point.second * height).toInt().coerceIn(0, height - 1)
-                    OverlayCursorService.updatePosition(screenX - 14, screenY - 14)
+                gazeRepository.latestScreenPoint().collectLatest { point ->
+                    if (point == null || point.isBlinking) return@collectLatest
+                    OverlayCursorService.updatePosition(
+                        point.xPx.toInt() - 14,
+                        point.yPx.toInt() - 14,
+                    )
                     dwellController.update(
-                        frame.copy(x = screenX.toFloat(), y = screenY.toFloat()),
+                        GazeFrame(
+                            x = point.xPx,
+                            y = point.yPx,
+                            confidence = point.confidence,
+                            timestampMs = point.timestampNs / 1_000_000L,
+                            blinking = false,
+                        ),
                     )
                 }
             }
@@ -81,10 +85,8 @@ class MainActivity : FlutterActivity() {
                 when (call.method) {
                     "camera.start" -> {
                         if (
-                            ContextCompat.checkSelfPermission(
-                                this,
-                                Manifest.permission.CAMERA,
-                            ) != PackageManager.PERMISSION_GRANTED
+                            ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) !=
+                            PackageManager.PERMISSION_GRANTED
                         ) {
                             result.error("CAMERA_PERMISSION", "Camera permission is required.", null)
                         } else {
@@ -94,13 +96,12 @@ class MainActivity : FlutterActivity() {
                             result.success(null)
                         }
                     }
-
                     "camera.stop" -> {
                         cameraRequested = false
                         cameraController.stop()
+                        gazeRepository.reset()
                         result.success(null)
                     }
-
                     "overlay.request" -> {
                         if (!Settings.canDrawOverlays(this)) {
                             startActivity(
@@ -112,55 +113,48 @@ class MainActivity : FlutterActivity() {
                         }
                         result.success(null)
                     }
-
                     "overlay.isGranted" -> result.success(Settings.canDrawOverlays(this))
-
                     "accessibility.request" -> {
                         startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
                         result.success(null)
                     }
-
                     "accessibility.isEnabled" -> result.success(isAccessibilityEnabled())
-
                     "gaze.latest" -> {
-                        val frame = gazeRepository.latest.value
-                        if (frame == null) {
+                        val sample = gazeRepository.latest.value
+                        if (sample == null) {
                             result.success(null)
                         } else {
                             result.success(
                                 mapOf(
-                                    "x" to frame.x.toDouble(),
-                                    "y" to frame.y.toDouble(),
-                                    "confidence" to frame.confidence.toDouble(),
-                                    "timestampMs" to frame.timestampMs,
-                                    "blinking" to frame.blinking,
+                                    "x" to sample.rawX.toDouble(),
+                                    "y" to sample.rawY.toDouble(),
+                                    "leftIrisX" to sample.leftIrisX.toDouble(),
+                                    "leftIrisY" to sample.leftIrisY.toDouble(),
+                                    "rightIrisX" to sample.rightIrisX.toDouble(),
+                                    "rightIrisY" to sample.rightIrisY.toDouble(),
+                                    "confidence" to sample.confidence.toDouble(),
+                                    "timestampMs" to sample.timestampNs / 1_000_000L,
+                                    "blinking" to !sample.eyeOpen,
                                 ),
                             )
                         }
                     }
-
                     "screen.size" -> result.success(
                         mapOf(
                             "width" to resources.displayMetrics.widthPixels,
                             "height" to resources.displayMetrics.heightPixels,
                         ),
                     )
-
-                    "calibration.isReady" -> result.success(calibrationModel.isFitted())
-
+                    "calibration.isReady" -> result.success(calibrationManager.hasActiveModel())
                     "calibration.fit" -> {
                         @Suppress("UNCHECKED_CAST")
                         val rawSamples = call.argument<List<Map<String, Any?>>>("samples")
                             ?: return@setMethodCallHandler result.error(
-                                "INVALID_ARGUMENT",
-                                "Missing calibration samples.",
-                                null,
+                                "INVALID_ARGUMENT", "Missing calibration samples.", null,
                             )
                         if (rawSamples.size < 9) {
                             return@setMethodCallHandler result.error(
-                                "INVALID_ARGUMENT",
-                                "Nine calibration samples are required.",
-                                null,
+                                "INVALID_ARGUMENT", "Nine calibration samples are required.", null,
                             )
                         }
                         val samples = rawSamples.map { sample ->
@@ -171,53 +165,39 @@ class MainActivity : FlutterActivity() {
                                 targetY = (sample["targetY"] as Number).toFloat(),
                             )
                         }
-                        calibrationModel.fit(samples)
-                        calibrationModel.serialize()?.let(calibrationStore::write)
+                        calibrationManager.fit(samples)
                         result.success(null)
                     }
-
                     "calibration.predict" -> {
                         val x = call.argument<Double>("x")
                             ?: return@setMethodCallHandler result.error(
-                                "INVALID_ARGUMENT",
-                                "Missing x.",
-                                null,
+                                "INVALID_ARGUMENT", "Missing x.", null,
                             )
                         val y = call.argument<Double>("y")
                             ?: return@setMethodCallHandler result.error(
-                                "INVALID_ARGUMENT",
-                                "Missing y.",
-                                null,
+                                "INVALID_ARGUMENT", "Missing y.", null,
                             )
-                        if (!calibrationModel.isFitted()) {
+                        if (!calibrationManager.hasActiveModel()) {
                             return@setMethodCallHandler result.error(
-                                "CALIBRATION_REQUIRED",
-                                "Calibration has not been completed.",
-                                null,
+                                "CALIBRATION_REQUIRED", "Calibration has not been completed.", null,
                             )
                         }
-                        val point = calibrationModel.predict(x.toFloat(), y.toFloat())
+                        val point = calibrationManager.predict(x.toFloat(), y.toFloat())
                         result.success(mapOf("x" to point.first, "y" to point.second))
                     }
-
                     "calibration.clear" -> {
-                        calibrationModel.clear()
-                        calibrationStore.clear()
+                        calibrationManager.clear()
+                        gazeRepository.reset()
                         result.success(null)
                     }
-
                     "gesture.tap" -> {
                         val x = call.argument<Double>("x")
                             ?: return@setMethodCallHandler result.error(
-                                "INVALID_ARGUMENT",
-                                "Missing x.",
-                                null,
+                                "INVALID_ARGUMENT", "Missing x.", null,
                             )
                         val y = call.argument<Double>("y")
                             ?: return@setMethodCallHandler result.error(
-                                "INVALID_ARGUMENT",
-                                "Missing y.",
-                                null,
+                                "INVALID_ARGUMENT", "Missing y.", null,
                             )
                         if (!TouchAccessibilityService.performTap(x.toFloat(), y.toFloat())) {
                             result.error(
@@ -229,25 +209,19 @@ class MainActivity : FlutterActivity() {
                             result.success(null)
                         }
                     }
-
                     "dwell.configure" -> {
                         val duration = call.argument<Int>("durationMs")
                             ?: return@setMethodCallHandler result.error(
-                                "INVALID_ARGUMENT",
-                                "Missing durationMs.",
-                                null,
+                                "INVALID_ARGUMENT", "Missing durationMs.", null,
                             )
                         val radius = call.argument<Double>("radiusPx")
                             ?: return@setMethodCallHandler result.error(
-                                "INVALID_ARGUMENT",
-                                "Missing radiusPx.",
-                                null,
+                                "INVALID_ARGUMENT", "Missing radiusPx.", null,
                             )
                         DwellConfiguration.configure(duration.toLong(), radius.toFloat())
                         dwellController.configure(duration.toLong(), radius.toFloat())
                         result.success(null)
                     }
-
                     else -> result.notImplemented()
                 }
             } catch (error: Exception) {
@@ -264,9 +238,7 @@ class MainActivity : FlutterActivity() {
     }
 
     private fun performDwellTap(x: Float, y: Float) {
-        if (TouchAccessibilityService.performTap(x, y)) {
-            hapticFeedback.click()
-        }
+        if (TouchAccessibilityService.performTap(x, y)) hapticFeedback.click()
     }
 
     private fun isAccessibilityEnabled(): Boolean {
