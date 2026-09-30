@@ -10,7 +10,7 @@
     <uses-feature android:name="android.hardware.camera.front" android:required="true" />
 
     <application
-        android:name=".EyeControlApplication"
+        android:name="${applicationName}"
         android:label="@string/app_name"
         android:icon="@mipmap/ic_launcher"
         android:allowBackup="false"
