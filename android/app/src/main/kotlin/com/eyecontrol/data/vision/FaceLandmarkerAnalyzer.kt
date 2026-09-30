@@ -10,6 +10,7 @@ import com.eyecontrol.core.logging.AppLogger
 import com.eyecontrol.domain.model.GazeFrame
 import com.eyecontrol.domain.repository.GazeRepository
 import com.google.mediapipe.framework.image.BitmapImageBuilder
+import com.google.mediapipe.framework.image.MPImage
 import com.google.mediapipe.tasks.core.BaseOptions
 import com.google.mediapipe.tasks.vision.core.RunningMode
 import com.google.mediapipe.tasks.vision.facelandmarker.FaceLandmarker
@@ -54,7 +55,7 @@ class FaceLandmarkerAnalyzer(
                 imageProxy.height,
                 Bitmap.Config.ARGB_8888,
             )
-            imageProxy.use { bitmap.copyPixelsFromBuffer(it.planes[0].buffer) }
+            imageProxy.planes.firstOrNull()?.buffer?.let(bitmap::copyPixelsFromBuffer)
             val matrix = Matrix().apply {
                 postRotate(imageProxy.imageInfo.rotationDegrees.toFloat())
                 if (frontCamera) {
@@ -79,24 +80,20 @@ class FaceLandmarkerAnalyzer(
         } catch (error: RuntimeException) {
             AppLogger.e("Frame analysis failed", error)
         } finally {
-            if (!imageProxy.isClosed) imageProxy.close()
+            imageProxy.close()
         }
     }
 
-    private fun onResult(result: FaceLandmarkerResult, image: com.google.mediapipe.framework.image.MPImage) {
+    private fun onResult(result: FaceLandmarkerResult, image: MPImage) {
         val landmarks = result.faceLandmarks().firstOrNull() ?: return
-        val leftIris = landmarks.subList(468.coerceAtMost(landmarks.size), landmarks.size)
+        val leftIris = landmarks.drop(468)
         if (leftIris.isEmpty()) return
-        val center = leftIris.reduce { acc, landmark ->
-            acc.copy(
-                x = (acc.x() + landmark.x()) / 2f,
-                y = (acc.y() + landmark.y()) / 2f,
-            )
-        }
+        val centerX = leftIris.sumOf { it.x().toDouble() }.toFloat() / leftIris.size
+        val centerY = leftIris.sumOf { it.y().toDouble() }.toFloat() / leftIris.size
         repository.publish(
             GazeFrame(
-                x = center.x(),
-                y = center.y(),
+                x = centerX,
+                y = centerY,
                 confidence = 1f,
                 timestampMs = result.timestampMs(),
                 blinking = false,
