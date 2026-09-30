@@ -1,6 +1,5 @@
 package com.eyecontrol.domain.usecase
 
-import android.os.SystemClock
 import com.eyecontrol.core.constants.NativeConstants
 import com.eyecontrol.data.decision.GazeIntent
 import com.eyecontrol.data.decision.IntentDetector
@@ -21,7 +20,7 @@ class DetectDwellUseCase(
     private var anchorY = 0f
 
     fun update(point: ScreenPoint): DwellState {
-        val now = SystemClock.uptimeMillis()
+        val now = System.nanoTime() / 1_000_000L
         val intent = intentDetector.detect(point)
 
         if (point.isBlinking) {
