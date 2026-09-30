@@ -1,28 +1,24 @@
 # NewVision
 
-NewVision is a production-oriented Android eye-control application. Gaze estimation, filtering, calibration and interaction decisions are processed on-device.
+Production-oriented on-device eye control for Android using Flutter, CameraX and MediaPipe.
 
-## Pipeline
-CameraX → MediaPipe Face Landmarker → iris normalization → Kalman + One-Euro smoothing → Ridge calibration → ScreenPoint → blink freeze → intent/dwell detection → overlay/accessibility gesture.
+## Highlights
+- Nine-point gaze calibration.
+- Four-feature ridge calibration.
+- Blink-aware screen-point pipeline.
+- Fixation, saccade and smooth-pursuit intent detection.
+- Dwell-based tap with cooldown.
+- Camera/overlay/accessibility readiness checks.
+- On-device camera processing.
 
-## Requirements
-Flutter 3.22+, Dart 3.3+, JDK 17, Android SDK 34. Minimum Android API 24.
+## Development
 
-## Build
-`flutter pub get`
-`bash scripts/fetch_face_landmarker.sh`
-`flutter analyze`
-`flutter test`
-`flutter build apk --release --split-per-abi --no-shrink`
+    flutter pub get
+    flutter analyze
+    flutter test --coverage
+    cd android && ./gradlew test assembleDebug
 
-Release signing is intentionally secret-backed; keystores are never committed.
+## Release
+Tagged releases build split APKs and an Android App Bundle. Release signing is supplied through GitHub Actions secrets; no keystore is stored in the repository.
 
-## Documentation
-- ARCHITECTURE.md
-- CALIBRATION.md
-- API.md
-- TROUBLESHOOTING.md
-- USER_GUIDE.md
-- PERFORMANCE.md
-- CONTRIBUTING.md
-- CHANGELOG.md
+See `docs/ARCHITECTURE.md`, `docs/CALIBRATION.md`, `docs/API.md`, `docs/PERFORMANCE.md`, `docs/PRIVACY.md`, `docs/TROUBLESHOOTING.md` and `docs/USER_GUIDE.md`.

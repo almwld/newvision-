@@ -1,11 +1,9 @@
 # Changelog
 
 ## 1.0.0
-- Unified gaze pipeline around GazeSample and ScreenPoint.
-- Added Ridge 4-feature calibration with Cholesky solving and persistence.
-- Added blink freeze and robust dwell interaction.
-- Added intent detection.
-- Added Flutter onboarding, permissions, calibration, tracking, settings and about screens.
-- Added lifecycle-aware permission readiness.
-- Added performance, thermal, memory and camera recovery utilities.
-- Added split APK and signed AAB release workflows.
+- Unified gaze and screen-point processing.
+- Four-feature ridge calibration.
+- Intent detection and dwell control.
+- Permission/readiness checks and onboarding persistence.
+- Runtime performance and recovery guards.
+- Split APK and AAB release automation.
