@@ -34,6 +34,35 @@ class RidgeCalibrationModel(
         )
     }
 
+    fun serialize(): String? {
+        val cx = coefficientsX ?: return null
+        val cy = coefficientsY ?: return null
+        return cx.joinToString(",") + "|" + cy.joinToString(",")
+    }
+
+    fun restore(serialized: String): Boolean {
+        val sections = serialized.split('|')
+        if (sections.size != 2) return false
+        val x = parseCoefficients(sections[0]) ?: return false
+        val y = parseCoefficients(sections[1]) ?: return false
+        coefficientsX = x
+        coefficientsY = y
+        return true
+    }
+
+    fun clear() {
+        coefficientsX = null
+        coefficientsY = null
+    }
+
+    private fun parseCoefficients(value: String): DoubleArray? {
+        val parts = value.split(',')
+        if (parts.size != 6) return null
+        return runCatching {
+            DoubleArray(6) { parts[it].toDouble() }
+        }.getOrNull()
+    }
+
     private fun features(sample: CalibrationSample): DoubleArray {
         val x = sample.x.toDouble()
         val y = sample.y.toDouble()
