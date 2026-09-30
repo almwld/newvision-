@@ -152,7 +152,7 @@ class _CalibrationPageState extends State<CalibrationPage> {
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 12),
-                  Text(
+                  const Text(
                     'سيتم التقاط 9 نقاط ومعالجة البيانات محلياً.',
                     textAlign: TextAlign.center,
                   ),
