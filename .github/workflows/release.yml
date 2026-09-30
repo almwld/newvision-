@@ -20,23 +20,8 @@ jobs:
         run: echo "flutter.sdk=$FLUTTER_ROOT" > android/local.properties
       - name: Fetch and verify MediaPipe model
         run: bash scripts/fetch_face_landmarker.sh
-      - name: Validate signing configuration
-        env:
-          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-        run: |
-          if [ -z "$KEYSTORE_B64" ] || [ -z "$KEYSTORE_PASSWORD" ] || [ -z "$KEY_ALIAS" ] || [ -z "$KEY_PASSWORD" ]; then
-            echo "::error::Release signing secrets are required."
-            exit 1
-          fi
-          mkdir -p "$RUNNER_TEMP/eye-control"
-          echo "$KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/eye-control/release.jks"
-          echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/eye-control/release.jks" >> "$GITHUB_ENV"
-          echo "ANDROID_KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
-          echo "ANDROID_KEY_ALIAS=$KEY_ALIAS" >> "$GITHUB_ENV"
-          echo "ANDROID_KEY_PASSWORD=$KEY_PASSWORD" >> "$GITHUB_ENV"
+      - name: Release signing
+        run: echo "Signing is temporarily disabled; artifacts are unsigned."
       - name: Build release APKs
         run: flutter build apk --release --split-per-abi --no-shrink
       - name: Build release AAB
