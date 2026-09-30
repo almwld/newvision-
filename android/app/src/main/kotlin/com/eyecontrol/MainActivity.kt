@@ -23,7 +23,6 @@ import com.eyecontrol.data.camera.CameraController
 import com.eyecontrol.data.repository.NativeCalibrationRepository
 import com.eyecontrol.data.repository.NativeGazeRepository
 import com.eyecontrol.data.repository.NativeGazeRepositoryFactory
-import com.eyecontrol.domain.model.GazeFrame
 import com.eyecontrol.domain.usecase.DwellController
 import com.eyecontrol.service.HapticFeedback
 import com.eyecontrol.service.OverlayCursorService
@@ -58,16 +57,8 @@ class MainActivity : FlutterActivity() {
             repeatOnLifecycle(Lifecycle.State.RESUMED) {
                 gazeRepository.latestScreenPoint().collectLatest { point ->
                     if (point == null || point.isBlinking) return@collectLatest
-                    OverlayCursorService.updatePosition(point.xPx.toInt() - 14, point.yPx.toInt() - 14)
-                    dwellController.update(
-                        GazeFrame(
-                            x = point.xPx,
-                            y = point.yPx,
-                            confidence = point.confidence,
-                            timestampMs = point.timestampNs / 1_000_000L,
-                            blinking = false,
-                        ),
-                    )
+                    OverlayCursorService.update(point)
+                    dwellController.update(point)
                 }
             }
         }

@@ -7,6 +7,7 @@ import android.os.IBinder
 import android.view.Gravity
 import android.view.View
 import android.view.WindowManager
+import com.eyecontrol.domain.model.ScreenPoint
 import java.util.concurrent.atomic.AtomicReference
 
 class OverlayCursorService : Service() {
@@ -17,9 +18,7 @@ class OverlayCursorService : Service() {
     override fun onCreate() {
         super.onCreate()
         windowManager = getSystemService(WindowManager::class.java)
-        cursor = View(this).apply {
-            setBackgroundColor(0xCC0A8F83.toInt())
-        }
+        cursor = View(this).apply { setBackgroundColor(0xCC0A8F83.toInt()) }
         params = WindowManager.LayoutParams(
             28,
             28,
@@ -36,7 +35,12 @@ class OverlayCursorService : Service() {
         instance.set(this)
     }
 
-    fun moveTo(x: Int, y: Int) {
+    fun update(point: ScreenPoint) {
+        if (point.isBlinking) return
+        moveTo(point.xPx.toInt() - 14, point.yPx.toInt() - 14)
+    }
+
+    private fun moveTo(x: Int, y: Int) {
         val view = cursor ?: return
         params.x = x.coerceAtLeast(0)
         params.y = y.coerceAtLeast(0)
@@ -55,8 +59,8 @@ class OverlayCursorService : Service() {
     companion object {
         private val instance = AtomicReference<OverlayCursorService?>()
 
-        fun updatePosition(x: Int, y: Int) {
-            instance.get()?.moveTo(x, y)
+        fun update(point: ScreenPoint) {
+            instance.get()?.update(point)
         }
     }
 }

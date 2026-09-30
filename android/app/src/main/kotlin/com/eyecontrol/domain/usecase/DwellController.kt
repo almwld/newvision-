@@ -2,7 +2,8 @@ package com.eyecontrol.domain.usecase
 
 import android.os.SystemClock
 import com.eyecontrol.core.constants.NativeConstants
-import com.eyecontrol.domain.model.GazeFrame
+import com.eyecontrol.domain.model.DwellState
+import com.eyecontrol.domain.model.ScreenPoint
 import kotlin.math.hypot
 
 class DwellController(
@@ -11,26 +12,47 @@ class DwellController(
     private val onDwell: (Float, Float) -> Unit,
 ) {
     private var startedAt = 0L
+    private var pausedAt = 0L
     private var currentDurationMs = durationMs
     private var currentRadiusPx = radiusPx
     private var anchorX = 0f
     private var anchorY = 0f
+    private var cooldownUntil = 0L
 
-    fun update(frame: GazeFrame) {
-        if (frame.blinking) {
-            reset()
-            return
+    fun update(point: ScreenPoint): DwellState {
+        val now = SystemClock.uptimeMillis()
+
+        if (point.isBlinking) {
+            if (startedAt != 0L && pausedAt == 0L) pausedAt = now
+            return state(now, fired = false, cancelled = false)
         }
-        if (startedAt == 0L || hypot(frame.x - anchorX, frame.y - anchorY) > currentRadiusPx) {
-            startedAt = SystemClock.uptimeMillis()
-            anchorX = frame.x
-            anchorY = frame.y
-            return
+
+        if (pausedAt != 0L) {
+            startedAt += now - pausedAt
+            pausedAt = 0L
         }
-        if (SystemClock.uptimeMillis() - startedAt >= currentDurationMs) {
+
+        if (now < cooldownUntil) return state(now, fired = false, cancelled = false)
+
+        val moved = startedAt != 0L &&
+            hypot(point.xPx - anchorX, point.yPx - anchorY) > currentRadiusPx
+        if (startedAt == 0L || moved) {
+            startedAt = now
+            pausedAt = 0L
+            anchorX = point.xPx
+            anchorY = point.yPx
+            return state(now, fired = false, cancelled = moved)
+        }
+
+        val elapsed = now - startedAt
+        if (elapsed >= currentDurationMs) {
             onDwell(anchorX, anchorY)
-            reset()
+            cooldownUntil = now + COOLDOWN_MS
+            resetAnchor()
+            return DwellState(progress = 1f, fired = true, cancelled = false)
         }
+
+        return state(now, fired = false, cancelled = false)
     }
 
     fun configure(durationMs: Long, radiusPx: Float) {
@@ -42,6 +64,26 @@ class DwellController(
     }
 
     fun reset() {
+        resetAnchor()
+        cooldownUntil = 0L
+    }
+
+    private fun resetAnchor() {
         startedAt = 0L
+        pausedAt = 0L
+    }
+
+    private fun state(now: Long, fired: Boolean, cancelled: Boolean): DwellState {
+        if (startedAt == 0L) return DwellState(0f, fired, cancelled)
+        val elapsed = (now - startedAt).coerceAtLeast(0L)
+        return DwellState(
+            progress = (elapsed.toFloat() / currentDurationMs).coerceIn(0f, 1f),
+            fired = fired,
+            cancelled = cancelled,
+        )
+    }
+
+    private companion object {
+        const val COOLDOWN_MS = 500L
     }
 }
