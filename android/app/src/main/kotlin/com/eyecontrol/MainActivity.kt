@@ -10,7 +10,9 @@ import android.os.Bundle
 import android.provider.Settings
 import android.view.accessibility.AccessibilityManager
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ProcessLifecycleOwner
+import androidx.lifecycle.lifecycleScope
 import com.eyecontrol.core.constants.DwellConfiguration
 import com.eyecontrol.core.constants.NativeConstants
 import com.eyecontrol.core.logging.AppLogger
@@ -18,16 +20,22 @@ import com.eyecontrol.data.calibration.CalibrationSample
 import com.eyecontrol.data.calibration.CalibrationStore
 import com.eyecontrol.data.calibration.RidgeCalibrationModel
 import com.eyecontrol.data.camera.CameraController
+import com.eyecontrol.domain.model.GazeFrame
+import com.eyecontrol.domain.usecase.DwellController
+import com.eyecontrol.service.OverlayCursorService
 import com.eyecontrol.data.repository.NativeGazeRepository
 import com.eyecontrol.service.TouchAccessibilityService
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 
 class MainActivity : FlutterActivity() {
     private val gazeRepository = NativeGazeRepository()
     private lateinit var cameraController: CameraController
     private lateinit var calibrationStore: CalibrationStore
+    private lateinit var dwellController: DwellController
     private val calibrationModel = RidgeCalibrationModel()
     private var cameraRequested = false
 
@@ -36,6 +44,27 @@ class MainActivity : FlutterActivity() {
         calibrationStore = CalibrationStore(this)
         calibrationStore.read()?.let(calibrationModel::restore)
         cameraController = CameraController(this, ProcessLifecycleOwner.get(), gazeRepository)
+        dwellController = DwellController(onDwell = ::performDwellTap)
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                gazeRepository.latest.collectLatest { frame ->
+                    if (frame == null || frame.blinking || frame.confidence < 0.25f) return@collectLatest
+                    val point = if (calibrationModel.isFitted()) {
+                        calibrationModel.predict(frame.x, frame.y)
+                    } else {
+                        Pair(frame.x, frame.y)
+                    }
+                    val width = resources.displayMetrics.widthPixels
+                    val height = resources.displayMetrics.heightPixels
+                    val screenX = (point.first * width).toInt().coerceIn(0, width - 1)
+                    val screenY = (point.second * height).toInt().coerceIn(0, height - 1)
+                    OverlayCursorService.updatePosition(screenX - 14, screenY - 14)
+                    dwellController.update(
+                        frame.copy(x = screenX.toFloat(), y = screenY.toFloat()),
+                    )
+                }
+            }
+        }
     }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -56,6 +85,7 @@ class MainActivity : FlutterActivity() {
                             result.error("CAMERA_PERMISSION", "Camera permission is required.", null)
                         } else {
                             cameraRequested = true
+                            startOverlayIfPermitted()
                             cameraController.start()
                             result.success(null)
                         }
@@ -210,6 +240,7 @@ class MainActivity : FlutterActivity() {
                                 null,
                             )
                         DwellConfiguration.configure(duration.toLong(), radius.toFloat())
+                        dwellController.configure(duration.toLong(), radius.toFloat())
                         result.success(null)
                     }
 
@@ -220,6 +251,16 @@ class MainActivity : FlutterActivity() {
                 result.error("PLATFORM_ERROR", error.message, null)
             }
         }
+    }
+
+    private fun startOverlayIfPermitted() {
+        if (Settings.canDrawOverlays(this)) {
+            startService(Intent(this, OverlayCursorService::class.java))
+        }
+    }
+
+    private fun performDwellTap(x: Float, y: Float) {
+        TouchAccessibilityService.performTap(x, y)
     }
 
     private fun isAccessibilityEnabled(): Boolean {
@@ -235,12 +276,16 @@ class MainActivity : FlutterActivity() {
 
     override fun onPause() {
         cameraController.stop()
+        stopService(Intent(this, OverlayCursorService::class.java))
         super.onPause()
     }
 
     override fun onResume() {
         super.onResume()
-        if (cameraRequested) cameraController.start()
+        if (cameraRequested) {
+            startOverlayIfPermitted()
+            cameraController.start()
+        }
     }
 
     override fun onDestroy() {
