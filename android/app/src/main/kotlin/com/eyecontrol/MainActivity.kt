@@ -18,11 +18,11 @@ import com.eyecontrol.core.constants.DwellConfiguration
 import com.eyecontrol.core.constants.NativeConstants
 import com.eyecontrol.core.logging.AppLogger
 import com.eyecontrol.data.calibration.CalibrationFeatureSample
-import com.eyecontrol.data.calibration.CalibrationManager
 import com.eyecontrol.data.calibration.CalibrationSample
-import com.eyecontrol.data.calibration.CalibrationStore
 import com.eyecontrol.data.camera.CameraController
+import com.eyecontrol.data.repository.NativeCalibrationRepository
 import com.eyecontrol.data.repository.NativeGazeRepository
+import com.eyecontrol.data.repository.NativeGazeRepositoryFactory
 import com.eyecontrol.domain.model.GazeFrame
 import com.eyecontrol.domain.usecase.DwellController
 import com.eyecontrol.service.HapticFeedback
@@ -36,7 +36,8 @@ import kotlinx.coroutines.launch
 
 class MainActivity : FlutterActivity() {
     private lateinit var gazeRepository: NativeGazeRepository
-    private lateinit var calibrationManager: CalibrationManager
+    private lateinit var calibrationRepository: NativeCalibrationRepository
+    private lateinit var repositoryFactory: NativeGazeRepositoryFactory
     private lateinit var cameraController: CameraController
     private lateinit var dwellController: DwellController
     private lateinit var hapticFeedback: HapticFeedback
@@ -44,9 +45,9 @@ class MainActivity : FlutterActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        calibrationManager = CalibrationManager(CalibrationStore(this))
-        gazeRepository = NativeGazeRepository(
-            calibrationManager = calibrationManager,
+        repositoryFactory = NativeGazeRepositoryFactory(this)
+        calibrationRepository = repositoryFactory.calibrationRepository()
+        gazeRepository = repositoryFactory.create(
             screenWidth = resources.displayMetrics.widthPixels,
             screenHeight = resources.displayMetrics.heightPixels,
         )
@@ -124,10 +125,11 @@ class MainActivity : FlutterActivity() {
                                 },
                             )
                         }
-                        "screen.size" -> result.success(
-                            mapOf("width" to resources.displayMetrics.widthPixels, "height" to resources.displayMetrics.heightPixels),
-                        )
-                        "calibration.isReady" -> result.success(calibrationManager.hasActiveModel())
+                        "screen.size" -> result.success(mapOf(
+                            "width" to resources.displayMetrics.widthPixels,
+                            "height" to resources.displayMetrics.heightPixels,
+                        ))
+                        "calibration.isReady" -> result.success(calibrationRepository.hasActiveModel())
                         "calibration.fit" -> {
                             @Suppress("UNCHECKED_CAST")
                             val rawSamples = call.argument<List<Map<String, Any?>>>("samples")
@@ -140,7 +142,7 @@ class MainActivity : FlutterActivity() {
                                     it["rightIrisX"] is Number && it["rightIrisY"] is Number
                             }
                             if (useV2) {
-                                calibrationManager.fitV2(rawSamples.map {
+                                calibrationRepository.fitV2(rawSamples.map {
                                     CalibrationFeatureSample(
                                         leftIrisX = (it["leftIrisX"] as Number).toFloat(),
                                         leftIrisY = (it["leftIrisY"] as Number).toFloat(),
@@ -151,7 +153,7 @@ class MainActivity : FlutterActivity() {
                                     )
                                 })
                             } else {
-                                calibrationManager.fit(rawSamples.map {
+                                calibrationRepository.fitLegacy(rawSamples.map {
                                     CalibrationSample(
                                         x = (it["x"] as Number).toFloat(),
                                         y = (it["y"] as Number).toFloat(),
@@ -167,14 +169,14 @@ class MainActivity : FlutterActivity() {
                                 ?: return@setMethodCallHandler result.error("INVALID_ARGUMENT", "Missing x.", null)
                             val y = call.argument<Double>("y")
                                 ?: return@setMethodCallHandler result.error("INVALID_ARGUMENT", "Missing y.", null)
-                            if (!calibrationManager.hasActiveModel()) {
+                            if (!calibrationRepository.hasActiveModel()) {
                                 return@setMethodCallHandler result.error("CALIBRATION_REQUIRED", "Calibration has not been completed.", null)
                             }
-                            val point = calibrationManager.predict(x.toFloat(), y.toFloat())
+                            val point = calibrationRepository.predict(x.toFloat(), y.toFloat())
                             result.success(mapOf("x" to point.first, "y" to point.second))
                         }
                         "calibration.clear" -> {
-                            calibrationManager.clear()
+                            calibrationRepository.clearNow()
                             gazeRepository.reset()
                             result.success(null)
                         }
