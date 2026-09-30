@@ -41,6 +41,32 @@ class RidgeRegressionTest {
     }
 
     @Test
+    fun rejectsMismatchedTargetRows() {
+        assertTrue(runCatching {
+            RidgeRegression().fit(
+                Array(2) { floatArrayOf(0f, 0f, 0f, 0f) },
+                Array(1) { floatArrayOf(0f, 0f) },
+            )
+        }.isFailure)
+    }
+
+    @Test
+    fun rejectsEmptyDataset() {
+        assertTrue(runCatching {
+            RidgeRegression().fit(emptyArray(), emptyArray())
+        }.isFailure)
+    }
+
+    @Test
+    fun regularizationKeepsDegenerateSamplesFinite() {
+        val weights = RidgeRegression(lambda = 1e-2f).fit(
+            Array(9) { floatArrayOf(0.5f, 0.5f, 0.5f, 0.5f) },
+            Array(9) { floatArrayOf(0.25f, 0.75f) },
+        )
+        assertTrue(weights.all { row -> row.all(Float::isFinite) })
+    }
+
+    @Test
     fun rejectsNonFiniteInput() {
         assertTrue(runCatching {
             RidgeRegression().fit(Array(1) { floatArrayOf(Float.NaN, 0f, 0f, 0f) }, Array(1) { floatArrayOf(1f, 1f) })
