@@ -13,6 +13,7 @@ local.properties
 *.aab
 *.keystore
 !debug.keystore
+android/app/src/main/assets/face_landmarker.task
 
 # IDE
 .idea/
