@@ -7,6 +7,7 @@ import android.os.SystemClock
 import androidx.camera.core.ImageProxy
 import com.eyecontrol.core.constants.NativeConstants
 import com.eyecontrol.core.logging.AppLogger
+import com.eyecontrol.data.filter.GazeSmoother
 import com.eyecontrol.domain.model.GazeFrame
 import com.eyecontrol.domain.repository.GazeRepository
 import com.google.mediapipe.framework.image.BitmapImageBuilder
@@ -33,6 +34,7 @@ class FaceLandmarkerAnalyzer(
     private val closed = AtomicBoolean(false)
     private val landmarker: FaceLandmarker
     private val blinkDetector = BlinkDetector()
+    private val smoother = GazeSmoother()
 
     init {
         val baseOptions = BaseOptions.builder()
@@ -121,13 +123,13 @@ class FaceLandmarkerAnalyzer(
         val confidence = min(1f, diagonal * 1.5f).coerceIn(0.1f, 1f)
 
         repository.publish(
-            GazeFrame(
+            smoother.filter(GazeFrame(
                 x = gazeX,
                 y = gazeY,
                 confidence = confidence,
                 timestampMs = result.timestampMs(),
                 blinking = blinking,
-            ),
+            )),
         )
     }
 
@@ -143,6 +145,10 @@ class FaceLandmarkerAnalyzer(
     ): List<NormalizedLandmark> = indices.map { landmarks[it] }
 
     override fun close() {
-        if (closed.compareAndSet(false, true)) landmarker.close()
+        if (closed.compareAndSet(false, true)) {
+            smoother.reset()
+            blinkDetector.reset()
+            landmarker.close()
+        }
     }
 }
