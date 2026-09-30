@@ -53,6 +53,24 @@ class DwellDetectionTest {
     }
 
     @Test
+    fun blink_pausesWithoutFiring() {
+        var fired = 0
+        val useCase = DetectDwellUseCase(onDwell = { _, _ -> fired++ })
+        useCase.configure(300L, 50f)
+        useCase.update(point(100f, 100f, 1_000_000_000L))
+        val state = useCase.update(point(100f, 100f, 1_100_000_000L, true))
+        assertTrue(!state.fired)
+        assertEquals(0, fired)
+    }
+
+    @Test
+    fun configureRejectsUnsafeBounds() {
+        val useCase = DetectDwellUseCase(onDwell = { _, _ -> })
+        assertTrue(runCatching { useCase.configure(100L, 50f) }.isFailure)
+        assertTrue(runCatching { useCase.configure(500L, 5f) }.isFailure)
+    }
+
+    @Test
     fun reset_clearsIntentAndDwellState() {
         val useCase = DetectDwellUseCase(onDwell = { _, _ -> })
         useCase.configure(300L, 50f)
