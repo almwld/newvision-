@@ -1,16 +1,28 @@
-# NewVision — Eye Control for Android
+# NewVision
 
-تطبيق Flutter + Android للتحكم بالهاتف عبر العين.
+NewVision is a production-oriented Android eye-control application. Gaze estimation, filtering, calibration and interaction decisions are processed on-device.
 
-## الحالة
-🚧 قيد البناء
+## Pipeline
+CameraX → MediaPipe Face Landmarker → iris normalization → Kalman + One-Euro smoothing → Ridge calibration → ScreenPoint → blink freeze → intent/dwell detection → overlay/accessibility gesture.
 
-## المعمارية
-Clean Architecture + MVVM
+## Requirements
+Flutter 3.22+, Dart 3.3+, JDK 17, Android SDK 34. Minimum Android API 24.
 
-## المتطلبات
-- Android 7.0+
-- كاميرا أمامية
+## Build
+`flutter pub get`
+`bash scripts/fetch_face_landmarker.sh`
+`flutter analyze`
+`flutter test`
+`flutter build apk --release --split-per-abi --no-shrink`
 
-## التثبيت
-راجع `docs/ARCHITECTURE.md`
+Release signing is intentionally secret-backed; keystores are never committed.
+
+## Documentation
+- ARCHITECTURE.md
+- CALIBRATION.md
+- API.md
+- TROUBLESHOOTING.md
+- USER_GUIDE.md
+- PERFORMANCE.md
+- CONTRIBUTING.md
+- CHANGELOG.md
