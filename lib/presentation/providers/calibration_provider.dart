@@ -1,0 +1,3 @@
+import 'package:flutter/foundation.dart'; import '../../platform/eye_control_platform.dart';
+class CalibrationProvider extends ChangeNotifier { CalibrationProvider({EyeControlPlatform? platform}):_platform=platform??EyeControlPlatform(); final EyeControlPlatform _platform; bool ready=false,busy=false; String? error;
+Future<void> refresh() async{ready=await _platform.isCalibrationReady();notifyListeners();} Future<void> clear() async{busy=true;notifyListeners();try{await _platform.clearCalibration();ready=false;error=null;}catch(e){error=e.toString();}busy=false;notifyListeners();}}
