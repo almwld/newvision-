@@ -62,7 +62,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: eye-control-debug-apk
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          path: android/app/build/outputs/apk/arm64-v8a/debug/app-arm64-v8a-debug.apk
           if-no-files-found: error
 
   release-apks:
@@ -93,20 +93,20 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: app-arm64-v8a-release
-          path: android/app/build/outputs/apk/release/app-arm64-v8a-release.apk
+          path: android/app/build/outputs/apk/arm64-v8a/release/app-arm64-v8a-release.apk
           if-no-files-found: error
           retention-days: 30
       - name: Upload armeabi-v7a
         uses: actions/upload-artifact@v4
         with:
           name: app-armeabi-v7a-release
-          path: android/app/build/outputs/apk/release/app-armeabi-v7a-release.apk
+          path: android/app/build/outputs/apk/armeabi-v7a/release/app-armeabi-v7a-release.apk
           if-no-files-found: error
           retention-days: 30
       - name: Upload x86_64
         uses: actions/upload-artifact@v4
         with:
           name: app-x86_64-release
-          path: android/app/build/outputs/apk/release/app-x86_64-release.apk
+          path: android/app/build/outputs/apk/x86_64/release/app-x86_64-release.apk
           if-no-files-found: error
           retention-days: 30
