@@ -227,7 +227,10 @@ class MainActivity : FlutterActivity() {
         val expected = ComponentName(this, TouchAccessibilityService::class.java)
         return manager
             .getEnabledAccessibilityServiceList(AccessibilityServiceInfo.FEEDBACK_ALL_MASK)
-            .any { service -> service.resolveInfo.serviceInfo.componentName == expected }
+            .any { service ->
+                val info = service.resolveInfo.serviceInfo
+                ComponentName(info.packageName, info.name) == expected
+            }
     }
 
     override fun onPause() {
