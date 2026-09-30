@@ -29,6 +29,13 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '17'
-      - name: Gradle check
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.22.0'
+          channel: 'stable'
+      - run: flutter pub get
+      - name: Configure Flutter SDK path
+        run: echo "flutter.sdk=$FLUTTER_ROOT" > android/local.properties
+      - name: Android debug build
         working-directory: android
-        run: echo "Android build check placeholder"
+        run: gradle --no-daemon :app:assembleDebug
