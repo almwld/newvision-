@@ -29,8 +29,10 @@ import com.eyecontrol.service.OverlayCursorService
 import com.eyecontrol.service.TouchAccessibilityService
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
+import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodChannel
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 class MainActivity : FlutterActivity() {
@@ -41,6 +43,7 @@ class MainActivity : FlutterActivity() {
     private lateinit var dwellController: DwellController
     private lateinit var hapticFeedback: HapticFeedback
     private var cameraRequested = false
+    private var gazeEventJob: Job? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -66,6 +69,35 @@ class MainActivity : FlutterActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        EventChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            "com.eyecontrol/gaze_screen_point",
+        ).setStreamHandler(object : EventChannel.StreamHandler {
+            override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {
+                gazeEventJob?.cancel()
+                gazeEventJob = lifecycleScope.launch {
+                    gazeRepository.latestScreenPoint().collectLatest { point ->
+                        if (point != null) {
+                            events?.success(
+                                mapOf(
+                                    "xPx" to point.xPx.toDouble(),
+                                    "yPx" to point.yPx.toDouble(),
+                                    "confidence" to point.confidence.toDouble(),
+                                    "isBlinking" to point.isBlinking,
+                                    "timestampNs" to point.timestampNs,
+                                ),
+                            )
+                        }
+                    }
+                }
+            }
+
+            override fun onCancel(arguments: Any?) {
+                gazeEventJob?.cancel()
+                gazeEventJob = null
+            }
+        })
+
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, NativeConstants.PLATFORM_CHANNEL)
             .setMethodCallHandler { call, result ->
                 try {
@@ -231,6 +263,7 @@ class MainActivity : FlutterActivity() {
     }
 
     override fun onDestroy() {
+        gazeEventJob?.cancel()
         cameraController.close()
         super.onDestroy()
     }
