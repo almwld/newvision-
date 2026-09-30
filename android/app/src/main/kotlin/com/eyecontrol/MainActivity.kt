@@ -23,6 +23,7 @@ import com.eyecontrol.data.camera.CameraController
 import com.eyecontrol.domain.model.GazeFrame
 import com.eyecontrol.domain.usecase.DwellController
 import com.eyecontrol.service.OverlayCursorService
+import com.eyecontrol.service.HapticFeedback
 import com.eyecontrol.data.repository.NativeGazeRepository
 import com.eyecontrol.service.TouchAccessibilityService
 import io.flutter.embedding.android.FlutterActivity
@@ -36,6 +37,7 @@ class MainActivity : FlutterActivity() {
     private lateinit var cameraController: CameraController
     private lateinit var calibrationStore: CalibrationStore
     private lateinit var dwellController: DwellController
+    private lateinit var hapticFeedback: HapticFeedback
     private val calibrationModel = RidgeCalibrationModel()
     private var cameraRequested = false
 
@@ -44,6 +46,7 @@ class MainActivity : FlutterActivity() {
         calibrationStore = CalibrationStore(this)
         calibrationStore.read()?.let(calibrationModel::restore)
         cameraController = CameraController(this, ProcessLifecycleOwner.get(), gazeRepository)
+        hapticFeedback = HapticFeedback(this)
         dwellController = DwellController(onDwell = ::performDwellTap)
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.RESUMED) {
@@ -260,7 +263,9 @@ class MainActivity : FlutterActivity() {
     }
 
     private fun performDwellTap(x: Float, y: Float) {
-        TouchAccessibilityService.performTap(x, y)
+        if (TouchAccessibilityService.performTap(x, y)) {
+            hapticFeedback.click()
+        }
     }
 
     private fun isAccessibilityEnabled(): Boolean {
