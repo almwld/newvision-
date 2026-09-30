@@ -1,6 +1,5 @@
-<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">NewVision</string>
-    <string name="accessibility_label">NewVision Eye Control</string>
-    <string name="accessibility_description">يتيح التحكم بالهاتف عبر العين</string>
+    <string name="accessibility_label">Eye Control</string>
+    <string name="accessibility_description">Allows NewVision to execute gaze-driven touch gestures.</string>
 </resources>
