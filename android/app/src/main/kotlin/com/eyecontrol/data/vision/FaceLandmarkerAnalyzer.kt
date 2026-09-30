@@ -34,6 +34,7 @@ class FaceLandmarkerAnalyzer(
     private val closed = AtomicBoolean(false)
     private val landmarker: FaceLandmarker
     private val blinkDetector = BlinkDetector()
+    private val irisNormalizer = IrisNormalizer()
     private val smoother = GazeSmoother()
 
     init {
@@ -105,13 +106,20 @@ class FaceLandmarkerAnalyzer(
         val landmarks = result.faceLandmarks().firstOrNull() ?: return
         if (landmarks.size < 478) return
 
-        val rightIris = landmarks.subList(469, 473)
-        val leftIris = landmarks.subList(474, 478)
-        val rightCenter = center(rightIris)
-        val leftCenter = center(leftIris)
+        val rightIris = listOf(landmarks[473])
+        val leftIris = listOf(landmarks[468])
+        val rightNormalized = irisNormalizer.normalize(
+            rightIris,
+            landmarks[33] to landmarks[133],
+        )
+        val leftNormalized = irisNormalizer.normalize(
+            leftIris,
+            landmarks[362] to landmarks[263],
+        )
+        if (rightNormalized == null || leftNormalized == null) return
 
-        val gazeX = ((rightCenter.first + leftCenter.first) * 0.5f).coerceIn(0f, 1f)
-        val gazeY = ((rightCenter.second + leftCenter.second) * 0.5f).coerceIn(0f, 1f)
+        val gazeX = ((rightNormalized.first + leftNormalized.first) * 0.5f).coerceIn(0f, 1f)
+        val gazeY = ((rightNormalized.second + leftNormalized.second) * 0.5f).coerceIn(0f, 1f)
 
         val rightEye = eyeContour(landmarks, intArrayOf(33, 160, 158, 133, 153, 144))
         val leftEye = eyeContour(landmarks, intArrayOf(362, 385, 387, 263, 373, 380))
@@ -132,12 +140,6 @@ class FaceLandmarkerAnalyzer(
             )),
         )
     }
-
-    private fun center(landmarks: List<NormalizedLandmark>): Pair<Float, Float> =
-        Pair(
-            landmarks.sumOf { it.x().toDouble() }.toFloat() / landmarks.size,
-            landmarks.sumOf { it.y().toDouble() }.toFloat() / landmarks.size,
-        )
 
     private fun eyeContour(
         landmarks: List<NormalizedLandmark>,
