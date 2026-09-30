@@ -11,6 +11,8 @@ class DwellController(
     private val onDwell: (Float, Float) -> Unit,
 ) {
     private var startedAt = 0L
+    private var currentDurationMs = durationMs
+    private var currentRadiusPx = radiusPx
     private var anchorX = 0f
     private var anchorY = 0f
 
@@ -19,16 +21,24 @@ class DwellController(
             reset()
             return
         }
-        if (startedAt == 0L || hypot(frame.x - anchorX, frame.y - anchorY) > radiusPx) {
+        if (startedAt == 0L || hypot(frame.x - anchorX, frame.y - anchorY) > currentRadiusPx) {
             startedAt = SystemClock.uptimeMillis()
             anchorX = frame.x
             anchorY = frame.y
             return
         }
-        if (SystemClock.uptimeMillis() - startedAt >= durationMs) {
+        if (SystemClock.uptimeMillis() - startedAt >= currentDurationMs) {
             onDwell(anchorX, anchorY)
             reset()
         }
+    }
+
+    fun configure(durationMs: Long, radiusPx: Float) {
+        require(durationMs in 300L..3000L)
+        require(radiusPx in 20f..250f)
+        currentDurationMs = durationMs
+        currentRadiusPx = radiusPx
+        reset()
     }
 
     fun reset() {
