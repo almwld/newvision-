@@ -1,6 +1,5 @@
 package com.eyecontrol.data.camera
 
-import android.content.Context
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.lifecycle.ProcessCameraProvider
@@ -12,8 +11,11 @@ import com.eyecontrol.domain.repository.GazeRepository
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
+/**
+ * Owns the CameraX analysis pipeline and deliberately keeps only the newest frame.
+ */
 class CameraController(
-    private val context: Context,
+    private val context: android.content.Context,
     private val lifecycleOwner: LifecycleOwner,
     private val repository: GazeRepository,
 ) : AutoCloseable {
@@ -31,20 +33,25 @@ class CameraController(
                     provider = cameraProvider
                     analyzer?.close()
                     analyzer = FaceLandmarkerAnalyzer(context, repository)
+
                     val analysis = ImageAnalysis.Builder()
+                        .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_RGBA_8888)
                         .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                        .setImageQueueDepth(1)
                         .build()
+
                     val faceAnalyzer = analyzer ?: return@addListener
                     analysis.setAnalyzer(executor) { image ->
                         faceAnalyzer.analyze(image, frontCamera = true)
                     }
+
                     cameraProvider.unbindAll()
                     cameraProvider.bindToLifecycle(
                         lifecycleOwner,
                         CameraSelector.DEFAULT_FRONT_CAMERA,
                         analysis,
                     )
-                    AppLogger.i("Camera analysis started")
+                    AppLogger.i("Camera analysis started at 30 FPS target")
                 } catch (error: Exception) {
                     AppLogger.e("Unable to start camera analysis", error)
                 }
