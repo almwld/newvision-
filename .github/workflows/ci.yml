@@ -21,8 +21,15 @@ jobs:
         run: flutter pub get
       - name: Analyze
         run: flutter analyze
-      - name: Flutter tests
-        run: flutter test --no-pub
+      - name: Flutter tests with coverage
+        run: flutter test --coverage --no-pub
+      - name: Upload Flutter coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: flutter-coverage
+          path: coverage/lcov.info
+          if-no-files-found: error
+          retention-days: 30
 
   android:
     runs-on: ubuntu-latest
