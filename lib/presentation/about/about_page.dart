@@ -1,1 +1,39 @@
-import 'package:flutter/material.dart'; class AboutPage extends StatelessWidget{const AboutPage({super.key});@override Widget build(BuildContext c)=>Scaffold(appBar:AppBar(title:const Text('حول التطبيق')),body:Padding(padding:const EdgeInsets.all(24),child:Column(children:[Icon(Icons.visibility_outlined,size:80,color:Theme.of(c).colorScheme.primary),const SizedBox(height:20),Text('NewVision',style:Theme.of(c).textTheme.headlineMedium),const SizedBox(height:12),const Text('نظام تحكم بالنظر يعمل على الجهاز باستخدام CameraX وMediaPipe. لا يتم إرسال صور الكاميرا إلى خادم.',textAlign:TextAlign.center),const SizedBox(height:24),const Text('الإصدار 1.0.0')]));}
+import 'package:flutter/material.dart';
+
+class AboutPage extends StatelessWidget {
+  const AboutPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('حول التطبيق'),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          children: [
+            Icon(
+              Icons.visibility_outlined,
+              size: 80,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'NewVision',
+              style: Theme.of(context).textTheme.headlineMedium,
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'نظام تحكم بالنظر يعمل على الجهاز باستخدام CameraX وMediaPipe. '
+              'لا يتم إرسال صور الكاميرا إلى خادم.',
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            const Text('الإصدار 1.0.0'),
+          ],
+        ),
+      ),
+    );
+  }
+}
