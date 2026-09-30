@@ -14,12 +14,15 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.22.0'
-          channel: 'stable'
+          channel: stable
       - name: Verify Flutter SDK
         run: flutter --version
-      - run: flutter pub get
-      - run: flutter analyze
-      - run: flutter test --no-pub
+      - name: Install dependencies
+        run: flutter pub get
+      - name: Analyze
+        run: flutter analyze
+      - name: Flutter tests
+        run: flutter test --no-pub
 
   android:
     runs-on: ubuntu-latest
@@ -27,13 +30,14 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
         with:
-          distribution: 'temurin'
+          distribution: temurin
           java-version: '17'
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.22.0'
-          channel: 'stable'
-      - run: flutter pub get
+          channel: stable
+      - name: Install Flutter dependencies
+        run: flutter pub get
       - name: Configure Flutter SDK path
         run: echo "flutter.sdk=$FLUTTER_ROOT" > android/local.properties
       - name: Fetch and verify MediaPipe model
@@ -53,3 +57,41 @@ jobs:
           name: eye-control-debug-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
+
+  release-apks:
+    name: Build split release APKs
+    needs: flutter
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.22.0'
+          channel: stable
+      - name: Install dependencies
+        run: flutter pub get
+      - name: Fetch and verify MediaPipe model
+        run: bash scripts/fetch_face_landmarker.sh
+      - name: Build release APKs
+        run: flutter build apk --release --split-per-abi --no-shrink
+      - name: Upload arm64-v8a
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-arm64-v8a-release
+          path: build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
+          if-no-files-found: error
+          retention-days: 30
+      - name: Upload armeabi-v7a
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-armeabi-v7a-release
+          path: build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk
+          if-no-files-found: error
+          retention-days: 30
+      - name: Upload x86_64
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-x86_64-release
+          path: build/app/outputs/flutter-apk/app-x86_64-release.apk
+          if-no-files-found: error
+          retention-days: 30
