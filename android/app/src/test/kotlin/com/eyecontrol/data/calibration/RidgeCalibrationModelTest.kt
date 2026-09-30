@@ -1,27 +1,53 @@
 package com.eyecontrol.data.calibration
 
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class RidgeCalibrationModelTest {
     @Test
-    fun ninePointModel_canFitAndPredict() {
-        val samples = listOf(
-            CalibrationSample(0f, 0f, 0f, 0f),
-            CalibrationSample(0.5f, 0f, 0.5f, 0f),
-            CalibrationSample(1f, 0f, 1f, 0f),
-            CalibrationSample(0f, 0.5f, 0f, 0.5f),
-            CalibrationSample(0.5f, 0.5f, 0.5f, 0.5f),
-            CalibrationSample(1f, 0.5f, 1f, 0.5f),
-            CalibrationSample(0f, 1f, 0f, 1f),
-            CalibrationSample(0.5f, 1f, 0.5f, 1f),
-            CalibrationSample(1f, 1f, 1f, 1f),
-        )
+    fun fitsNinePointQuadraticModel() {
         val model = RidgeCalibrationModel()
+        val samples = listOf(
+            CalibrationSample(0.1f, 0.1f, 0.1f, 0.1f),
+            CalibrationSample(0.5f, 0.1f, 0.5f, 0.1f),
+            CalibrationSample(0.9f, 0.1f, 0.9f, 0.1f),
+            CalibrationSample(0.1f, 0.5f, 0.1f, 0.5f),
+            CalibrationSample(0.5f, 0.5f, 0.5f, 0.5f),
+            CalibrationSample(0.9f, 0.5f, 0.9f, 0.5f),
+            CalibrationSample(0.1f, 0.9f, 0.1f, 0.9f),
+            CalibrationSample(0.5f, 0.9f, 0.5f, 0.9f),
+            CalibrationSample(0.9f, 0.9f, 0.9f, 0.9f),
+        )
         model.fit(samples)
-        val prediction = model.predict(0.5f, 0.5f)
         assertTrue(model.isFitted())
-        assertTrue(prediction.first in 0.45f..0.55f)
-        assertTrue(prediction.second in 0.45f..0.55f)
+        val prediction = model.predict(0.5f, 0.5f)
+        assertEquals(0.5f, prediction.first, 0.05f)
+        assertEquals(0.5f, prediction.second, 0.05f)
+    }
+
+    @Test
+    fun serializedModelCanBeRestored() {
+        val source = RidgeCalibrationModel()
+        source.fit(
+            listOf(
+                CalibrationSample(0.1f, 0.1f, 0.1f, 0.1f),
+                CalibrationSample(0.5f, 0.1f, 0.5f, 0.1f),
+                CalibrationSample(0.9f, 0.1f, 0.9f, 0.1f),
+                CalibrationSample(0.1f, 0.5f, 0.1f, 0.5f),
+                CalibrationSample(0.5f, 0.5f, 0.5f, 0.5f),
+                CalibrationSample(0.9f, 0.5f, 0.9f, 0.5f),
+                CalibrationSample(0.1f, 0.9f, 0.1f, 0.9f),
+                CalibrationSample(0.5f, 0.9f, 0.5f, 0.9f),
+                CalibrationSample(0.9f, 0.9f, 0.9f, 0.9f),
+            ),
+        )
+        val serialized = source.serialize()
+        requireNotNull(serialized)
+        val restored = RidgeCalibrationModel()
+        assertTrue(restored.restore(serialized))
+        val prediction = restored.predict(0.5f, 0.5f)
+        assertEquals(0.5f, prediction.first, 0.05f)
+        assertEquals(0.5f, prediction.second, 0.05f)
     }
 }
