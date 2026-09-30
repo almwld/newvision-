@@ -36,6 +36,7 @@ class _CalibrationPageState extends State<CalibrationPage> {
   Timer? _timer;
   final List<Map<String, double>> _samples = [];
   final List<Map<String, double>> _current = [];
+  bool _reading = false;
 
   Future<void> _start() async {
     setState(() {
@@ -54,11 +55,11 @@ class _CalibrationPageState extends State<CalibrationPage> {
 
     _timer?.cancel();
     _timer = Timer.periodic(const Duration(milliseconds: 50), (timer) async {
+      if (_reading) return;
+      _reading = true;
       ticks++;
       final gaze = await _platform.latestGaze();
-      if (gaze != null &&
-          (gaze['confidence'] as num?)?.toDouble().clamp(0, 1) != null &&
-          gaze['blinking'] != true) {
+      if (gaze != null && gaze['confidence'] is num && gaze['blinking'] != true) {
         final confidence = (gaze['confidence'] as num).toDouble();
         if (confidence >= 0.35) {
           _current.add({
@@ -67,6 +68,7 @@ class _CalibrationPageState extends State<CalibrationPage> {
           });
         }
       }
+      _reading = false;
 
       if (ticks >= 20) {
         timer.cancel();
