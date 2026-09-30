@@ -4,9 +4,7 @@ import 'package:flutter/material.dart';
 import '../../platform/eye_control_platform.dart';
 
 class CalibrationPage extends StatefulWidget {
-  const CalibrationPage({super.key, EyeControlPlatform? platform})
-      : _platform = platform;
-
+  const CalibrationPage({super.key, EyeControlPlatform? platform}) : _platform = platform;
   final EyeControlPlatform? _platform;
 
   @override
@@ -14,19 +12,12 @@ class CalibrationPage extends StatefulWidget {
 }
 
 class _CalibrationPageState extends State<CalibrationPage> {
-  late final EyeControlPlatform _platform =
-      widget._platform ?? EyeControlPlatform();
+  late final EyeControlPlatform _platform = widget._platform ?? EyeControlPlatform();
 
   static const targets = <Offset>[
-    Offset(0.10, 0.10),
-    Offset(0.50, 0.10),
-    Offset(0.90, 0.10),
-    Offset(0.10, 0.50),
-    Offset(0.50, 0.50),
-    Offset(0.90, 0.50),
-    Offset(0.10, 0.90),
-    Offset(0.50, 0.90),
-    Offset(0.90, 0.90),
+    Offset(0.10, 0.10), Offset(0.50, 0.10), Offset(0.90, 0.10),
+    Offset(0.10, 0.50), Offset(0.50, 0.50), Offset(0.90, 0.50),
+    Offset(0.10, 0.90), Offset(0.50, 0.90), Offset(0.90, 0.90),
   ];
 
   int _index = -1;
@@ -52,7 +43,6 @@ class _CalibrationPageState extends State<CalibrationPage> {
     if (!_running || _index < 0 || _index >= targets.length) return;
     _current.clear();
     var ticks = 0;
-
     _timer?.cancel();
     _timer = Timer.periodic(const Duration(milliseconds: 50), (timer) async {
       if (_reading) return;
@@ -61,10 +51,16 @@ class _CalibrationPageState extends State<CalibrationPage> {
       final gaze = await _platform.latestGaze();
       if (gaze != null && gaze['confidence'] is num && gaze['blinking'] != true) {
         final confidence = (gaze['confidence'] as num).toDouble();
-        if (confidence >= 0.35) {
+        if (confidence >= 0.35 &&
+            gaze['leftIrisX'] is num &&
+            gaze['leftIrisY'] is num &&
+            gaze['rightIrisX'] is num &&
+            gaze['rightIrisY'] is num) {
           _current.add({
-            'x': (gaze['x'] as num).toDouble(),
-            'y': (gaze['y'] as num).toDouble(),
+            'leftIrisX': (gaze['leftIrisX'] as num).toDouble(),
+            'leftIrisY': (gaze['leftIrisY'] as num).toDouble(),
+            'rightIrisX': (gaze['rightIrisX'] as num).toDouble(),
+            'rightIrisY': (gaze['rightIrisY'] as num).toDouble(),
           });
         }
       }
@@ -74,15 +70,13 @@ class _CalibrationPageState extends State<CalibrationPage> {
         timer.cancel();
         final point = targets[_index];
         if (_current.length >= 8) {
-          final x =
-              _current.map((item) => item['x']!).reduce((a, b) => a + b) /
-                  _current.length;
-          final y =
-              _current.map((item) => item['y']!).reduce((a, b) => a + b) /
-                  _current.length;
+          double average(String key) =>
+              _current.map((item) => item[key]!).reduce((a, b) => a + b) / _current.length;
           _samples.add({
-            'x': x,
-            'y': y,
+            'leftIrisX': average('leftIrisX'),
+            'leftIrisY': average('leftIrisY'),
+            'rightIrisX': average('rightIrisX'),
+            'rightIrisY': average('rightIrisY'),
             'targetX': point.dx,
             'targetY': point.dy,
           });
@@ -145,17 +139,12 @@ class _CalibrationPageState extends State<CalibrationPage> {
               child: Column(
                 children: [
                   Text(
-                    _running
-                        ? 'انظر إلى النقطة دون تحريك الرأس'
-                        : 'عاير النظام للحصول على دقة أعلى',
+                    _running ? 'انظر إلى النقطة دون تحريك الرأس' : 'عاير النظام للحصول على دقة أعلى',
                     style: Theme.of(context).textTheme.titleLarge,
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 12),
-                  const Text(
-                    'سيتم التقاط 9 نقاط ومعالجة البيانات محلياً.',
-                    textAlign: TextAlign.center,
-                  ),
+                  const Text('سيتم التقاط 9 نقاط ومعالجة البيانات محلياً.', textAlign: TextAlign.center),
                   const Spacer(),
                   if (!_running)
                     FilledButton.icon(
@@ -165,13 +154,7 @@ class _CalibrationPageState extends State<CalibrationPage> {
                     ),
                   if (_error != null) ...[
                     const SizedBox(height: 12),
-                    Text(
-                      _error!,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.error,
-                      ),
-                    ),
+                    Text(_error!, textAlign: TextAlign.center, style: TextStyle(color: Theme.of(context).colorScheme.error)),
                   ],
                   const Spacer(),
                 ],
@@ -180,10 +163,7 @@ class _CalibrationPageState extends State<CalibrationPage> {
           ),
           if (active)
             Align(
-              alignment: Alignment(
-                targets[_index].dx * 2 - 1,
-                targets[_index].dy * 2 - 1,
-              ),
+              alignment: Alignment(targets[_index].dx * 2 - 1, targets[_index].dy * 2 - 1),
               child: const _CalibrationDot(),
             ),
           if (_saving)

@@ -22,13 +22,11 @@ class ProcessGazeUseCase(
             )
         }
 
-        val (smoothX, smoothY) = smoother.filter(
-            sample.rawX,
-            sample.rawY,
+        val features = smoother.filterEyeFeatures(
+            sample.eyeFeatures(),
             sample.timestampNs / 1_000_000L,
-            sample.confidence,
         )
-        val normalized = calibrationManager.transform(floatArrayOf(smoothX, smoothY))
+        val normalized = calibrationManager.transform(features.toFloatArray())
         val point = ScreenPoint(
             xPx = (normalized.first.coerceIn(0f, 1f) * screenWidth)
                 .coerceIn(0f, (screenWidth - 1).coerceAtLeast(0).toFloat()),

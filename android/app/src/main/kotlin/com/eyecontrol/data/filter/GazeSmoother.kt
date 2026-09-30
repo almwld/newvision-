@@ -1,5 +1,6 @@
 package com.eyecontrol.data.filter
 
+import com.eyecontrol.domain.model.EyeFeatures
 import com.eyecontrol.domain.model.GazeFrame
 
 class GazeSmoother {
@@ -8,11 +9,16 @@ class GazeSmoother {
     private val euroX = OneEuroFilter(minCutoff = 1.0f, beta = 0.02f)
     private val euroY = OneEuroFilter(minCutoff = 1.0f, beta = 0.02f)
 
+    private val featureKalman = Array(4) { KalmanFilter1D() }
+    private val featureEuro = Array(4) { OneEuroFilter(minCutoff = 1.0f, beta = 0.02f) }
+
     fun reset() {
         kalmanX.reset()
         kalmanY.reset()
         euroX.reset()
         euroY.reset()
+        featureKalman.forEach(KalmanFilter1D::reset)
+        featureEuro.forEach(OneEuroFilter::reset)
     }
 
     fun filter(
@@ -24,6 +30,18 @@ class GazeSmoother {
         val x = euroX.filter(kalmanX.update(rawX), timestampMs)
         val y = euroY.filter(kalmanY.update(rawY), timestampMs)
         return Pair(x.coerceIn(0f, 1f), y.coerceIn(0f, 1f))
+    }
+
+    fun filterEyeFeatures(features: EyeFeatures, timestampMs: Long): EyeFeatures {
+        val input = features.toFloatArray()
+        val output = FloatArray(4)
+        for (i in input.indices) {
+            output[i] = featureEuro[i].filter(
+                featureKalman[i].update(input[i]),
+                timestampMs,
+            )
+        }
+        return EyeFeatures(output[0], output[1], output[2], output[3])
     }
 
     @Deprecated("Use the raw-coordinate filter overload from ProcessGazeUseCase.")

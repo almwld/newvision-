@@ -1,14 +1,6 @@
 package com.eyecontrol.data.calibration
 
-import kotlin.math.abs
-
-data class CalibrationSample(
-    val x: Float,
-    val y: Float,
-    val targetX: Float,
-    val targetY: Float,
-)
-
+@Deprecated("Use RidgeCalibrationModelV2. Kept only for backward-compatible calibration migration.")
 class RidgeCalibrationModel(
     private val lambda: Double = 0.01,
 ) {
@@ -58,9 +50,7 @@ class RidgeCalibrationModel(
     private fun parseCoefficients(value: String): DoubleArray? {
         val parts = value.split(',')
         if (parts.size != 6) return null
-        return runCatching {
-            DoubleArray(6) { parts[it].toDouble() }
-        }.getOrNull()
+        return runCatching { DoubleArray(6) { parts[it].toDouble() } }.getOrNull()
     }
 
     private fun features(sample: CalibrationSample): DoubleArray {
@@ -69,10 +59,7 @@ class RidgeCalibrationModel(
         return doubleArrayOf(1.0, x, y, x * x, x * y, y * y)
     }
 
-    private fun solve(
-        design: List<DoubleArray>,
-        targets: List<Double>,
-    ): DoubleArray {
+    private fun solve(design: List<DoubleArray>, targets: List<Double>): DoubleArray {
         val dimension = design.first().size
         val normal = Array(dimension) { DoubleArray(dimension + 1) }
         design.forEachIndexed { row, feature ->
@@ -85,9 +72,9 @@ class RidgeCalibrationModel(
         for (pivot in 0 until dimension) {
             var best = pivot
             for (row in pivot + 1 until dimension) {
-                if (abs(normal[row][pivot]) > abs(normal[best][pivot])) best = row
+                if (kotlin.math.abs(normal[row][pivot]) > kotlin.math.abs(normal[best][pivot])) best = row
             }
-            if (abs(normal[best][pivot]) < 1e-12) error("Singular calibration matrix.")
+            require(kotlin.math.abs(normal[best][pivot]) >= 1e-12) { "Singular calibration matrix." }
             val tmp = normal[pivot]
             normal[pivot] = normal[best]
             normal[best] = tmp
@@ -107,3 +94,10 @@ class RidgeCalibrationModel(
     private fun dot(a: DoubleArray, b: DoubleArray): Double =
         a.indices.sumOf { a[it] * b[it] }
 }
+
+data class CalibrationSample(
+    val x: Float,
+    val y: Float,
+    val targetX: Float,
+    val targetY: Float,
+)
