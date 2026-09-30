@@ -5,7 +5,12 @@ import 'presentation/home/home_page.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(ChangeNotifierProvider(create: (_) => HomeViewModel(), child: const EyeControlApp()));
+  runApp(
+    ChangeNotifierProvider(
+      create: (_) => HomeViewModel(),
+      child: const EyeControlApp(),
+    ),
+  );
 }
 
 class EyeControlApp extends StatelessWidget {
