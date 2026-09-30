@@ -13,6 +13,12 @@ class HomeViewModel extends ChangeNotifier {
   bool get cameraEnabled => _cameraEnabled;
   String? get error => _error;
 
+  void setCameraEnabled(bool value) {
+    if (_cameraEnabled == value) return;
+    _cameraEnabled = value;
+    notifyListeners();
+  }
+
   Future<void> toggleCamera() async {
     _error = null;
     if (_cameraEnabled) {
