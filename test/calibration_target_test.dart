@@ -8,11 +8,10 @@ void main() {
       const MaterialApp(home: CalibrationTarget(size: 40, active: true)),
     );
     expect(find.byType(CalibrationTarget), findsOneWidget);
-    final targetBox = find.descendant(
-      of: find.byType(CalibrationTarget),
-      matching: find.byType(SizedBox),
+    final target = tester.widget<CalibrationTarget>(
+      find.byType(CalibrationTarget),
     );
-    expect(tester.getSize(targetBox), const Size(40, 40));
+    expect(target.size, 40);
   });
 
   testWidgets('renders inactive calibration target', (tester) async {
