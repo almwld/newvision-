@@ -24,7 +24,7 @@ class RidgeRegressionTest {
     @Test
     fun predictionWeightsAreFinite() {
         val weights = RidgeRegression().fit(x, targets)
-        assertTrue(weights.flatten().all(Float::isFinite))
+        assertTrue(weights.all { row -> row.all(Float::isFinite) })
     }
 
     @Test
