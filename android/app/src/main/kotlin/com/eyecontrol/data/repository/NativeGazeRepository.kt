@@ -10,6 +10,12 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
+/**
+ * Single in-process source of truth for raw gaze samples and their screen projection.
+ *
+ * Samples are accepted in timestamp order only. A late native/camera frame must not
+ * move the cursor backwards or overwrite a newer point already consumed by the UI.
+ */
 class NativeGazeRepository(
     calibrationManager: CalibrationManager,
     screenWidth: Int,
@@ -23,10 +29,13 @@ class NativeGazeRepository(
     )
     private val _latest = MutableStateFlow<GazeSample?>(null)
     private val _latestScreenPoint = MutableStateFlow<ScreenPoint?>(null)
+    private var latestTimestampNs = Long.MIN_VALUE
 
     override val latest: StateFlow<GazeSample?> = _latest.asStateFlow()
 
     override fun publish(sample: GazeSample) {
+        if (sample.timestampNs <= latestTimestampNs) return
+        latestTimestampNs = sample.timestampNs
         _latest.value = sample
         _latestScreenPoint.value = processor.process(sample)
     }
@@ -37,6 +46,7 @@ class NativeGazeRepository(
         processor.reset()
         _latest.value = null
         _latestScreenPoint.value = null
+        latestTimestampNs = Long.MIN_VALUE
     }
 
     override fun clear() = reset()
