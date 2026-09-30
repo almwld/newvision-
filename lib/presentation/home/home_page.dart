@@ -2,12 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'home_view_model.dart';
+import '../calibration/calibration_page.dart';
 
 final GoRouter appRouter = GoRouter(
   routes: [
     GoRoute(
       path: '/',
       builder: (context, state) => const HomePage(),
+    ),
+    GoRoute(
+      path: '/calibration',
+      builder: (context, state) => const CalibrationPage(),
     ),
   ],
 );
@@ -72,6 +77,14 @@ class HomePage extends StatelessWidget {
                   actionLabel: isArabic ? 'فتح الإعدادات' : 'Open settings',
                   onPressed:
                       vm.accessibilityReady ? null : vm.requestAccessibility,
+                ),
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
+                  onPressed: () => context.push('/calibration'),
+                  icon: const Icon(Icons.tune),
+                  label: Text(
+                    isArabic ? 'معايرة دقة النظر' : 'Calibrate gaze accuracy',
+                  ),
                 ),
                 if (vm.error != null) ...[
                   const SizedBox(height: 12),
