@@ -5,5 +5,7 @@ linter:
     prefer_const_constructors: true
     prefer_const_declarations: true
     avoid_print: true
-    require_trailing_commas: true
+    require_trailing_commas: false
     always_declare_return_types: true
+    avoid_renaming_method_parameters: false
+    prefer_interpolation_to_compose_strings: false
