@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
+
 import 'package:eye_control/presentation/permissions/permissions_page.dart';
 import 'package:eye_control/presentation/providers/permission_provider.dart';
 import 'package:eye_control/platform/eye_control_platform.dart';
@@ -31,15 +32,21 @@ void main() {
       ),
     );
 
-    // PermissionsPage refreshes after the first frame and shows a progress
-    // indicator while checking system state. A settling animation is therefore
-    // intentionally avoided here; one frame is enough to verify the gate.
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
 
-    final button = find.widgetWithText(FilledButton, 'متابعة إلى التتبع');
+    final label = find.text('متابعة إلى التتبع');
+    expect(label, findsOneWidget);
+
+    final button = find.ancestor(
+      of: label,
+      matching: find.byType(FilledButton),
+    );
     expect(button, findsOneWidget);
-    expect(tester.widget<FilledButton>(button).onPressed, isNull);
+    expect(
+      tester.widget<FilledButton>(button).onPressed,
+      isNull,
+    );
 
     provider.dispose();
   });
