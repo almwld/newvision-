@@ -1,1 +1,1 @@
-export '../splash/splash_page.dart' show SplashPage;
+import '../splash/splash_page.dart'; class SplashScreen extends SplashPage { const SplashScreen({super.key}); }

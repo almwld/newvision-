@@ -1,0 +1,13 @@
+{
+  "@@locale":"en",
+  "appName":"NewVision",
+  "home":"Home",
+  "settings":"Settings",
+  "permissions":"Permissions",
+  "calibration":"Calibration",
+  "tracking":"Eye tracking",
+  "about":"About",
+  "continueLabel":"Continue",
+  "ready":"Ready",
+  "notReady":"Not ready"
+}

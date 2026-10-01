@@ -1,1 +1,1 @@
-export '../settings/settings_page.dart' show SettingsPage;
+import '../settings/settings_page.dart'; class SettingsScreen extends SettingsPage { const SettingsScreen({super.key}); }

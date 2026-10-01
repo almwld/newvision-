@@ -1,0 +1,13 @@
+{
+  "@@locale":"ar",
+  "appName":"NewVision",
+  "home":"الرئيسية",
+  "settings":"الإعدادات",
+  "permissions":"الصلاحيات",
+  "calibration":"المعايرة",
+  "tracking":"تتبع النظر",
+  "about":"حول التطبيق",
+  "continueLabel":"متابعة",
+  "ready":"جاهز",
+  "notReady":"غير جاهز"
+}

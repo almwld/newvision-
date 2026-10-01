@@ -1,1 +1,20 @@
-import 'package:go_router/go_router.dart'; import 'splash/splash_page.dart'; import 'onboarding/onboarding_page.dart'; import 'permissions/permissions_page.dart'; import 'home/home_page.dart'; import 'calibration/calibration_page.dart'; import 'tracking/tracking_page.dart'; import 'settings/settings_page.dart'; import 'about/about_page.dart'; final appRouter=GoRouter(initialLocation:'/splash',routes:[GoRoute(path:'/splash',builder:(_,__)=>const SplashPage()),GoRoute(path:'/onboarding',builder:(_,__)=>const OnboardingPage()),GoRoute(path:'/permissions',builder:(_,__)=>const PermissionsPage()),GoRoute(path:'/',builder:(_,__)=>const HomePage()),GoRoute(path:'/calibration',builder:(_,__)=>const CalibrationPage()),GoRoute(path:'/tracking',builder:(_,__)=>const TrackingPage()),GoRoute(path:'/settings',builder:(_,__)=>const SettingsPage()),GoRoute(path:'/about',builder:(_,__)=>const AboutPage())]);
+import 'package:go_router/go_router.dart';
+import 'screens/splash_screen.dart';
+import 'screens/onboarding_screen.dart';
+import 'screens/permissions_screen.dart';
+import 'home/home_page.dart';
+import 'screens/calibration_screen.dart';
+import 'screens/tracking_screen.dart';
+import 'screens/settings_screen.dart';
+import 'screens/about_screen.dart';
+
+final appRouter=GoRouter(initialLocation:'/splash',routes:[
+ GoRoute(path:'/splash',builder:(_,__)=>const SplashScreen()),
+ GoRoute(path:'/onboarding',builder:(_,__)=>const OnboardingScreen()),
+ GoRoute(path:'/permissions',builder:(_,__)=>const PermissionsScreen()),
+ GoRoute(path:'/',builder:(_,__)=>const HomePage()),
+ GoRoute(path:'/calibration',builder:(_,__)=>const CalibrationScreen()),
+ GoRoute(path:'/tracking',builder:(_,__)=>const TrackingScreen()),
+ GoRoute(path:'/settings',builder:(_,__)=>const SettingsScreen()),
+ GoRoute(path:'/about',builder:(_,__)=>const AboutScreen()),
+]);
