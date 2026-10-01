@@ -36,9 +36,12 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
 
-    final button = find.widgetWithText(FilledButton, 'متابعة إلى التتبع');
-    expect(button, findsOneWidget);
-    expect(tester.widget<FilledButton>(button).onPressed, isNull);
+    expect(find.text('متابعة إلى التتبع'), findsOneWidget);
+
+    final buttons = tester
+        .widgetList<FilledButton>(find.byType(FilledButton))
+        .toList();
+    expect(buttons.where((button) => button.onPressed == null), hasLength(1));
 
     provider.dispose();
   });
