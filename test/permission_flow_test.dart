@@ -17,7 +17,8 @@ class FlowFakePlatform extends EyeControlPlatform {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('tracking is gated until all permissions are ready', (tester) async {
+  testWidgets('tracking is gated until all permissions are ready',
+      (tester) async {
     final provider = PermissionProvider(platform: FlowFakePlatform())
       ..camera = false
       ..overlay = false
@@ -35,18 +36,11 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
 
-    final label = find.text('متابعة إلى التتبع');
-    expect(label, findsOneWidget);
+    expect(find.text('متابعة إلى التتبع'), findsOneWidget);
 
-    final button = find.ancestor(
-      of: label,
-      matching: find.byType(FilledButton),
-    );
-    expect(button, findsOneWidget);
-    expect(
-      tester.widget<FilledButton>(button).onPressed,
-      isNull,
-    );
+    final buttons = find.byType(FilledButton);
+    expect(buttons, findsOneWidget);
+    expect(tester.widget<FilledButton>(buttons).onPressed, isNull);
 
     provider.dispose();
   });

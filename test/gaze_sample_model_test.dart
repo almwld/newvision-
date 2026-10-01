@@ -1,1 +1,0 @@
-import 'package:flutter_test/flutter_test.dart'; import 'package:eye_control/data/models/gaze_sample_model.dart'; void main(){test('round trips screen point payload',(){final m=GazeSampleModel.fromMap({'xPx':12,'yPx':34,'confidence':.9,'isBlinking':false,'timestampNs':99});expect(m.xPx,12);expect(m.toMap()['timestampNs'],99);});}

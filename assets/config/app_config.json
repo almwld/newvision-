@@ -1,6 +1,0 @@
-{
-  "appName": "NewVision",
-  "analysis": {"targetFps": 30, "uiFps": 60, "strategy": "KEEP_ONLY_LATEST"},
-  "gaze": {"dwellTimeMs": 900, "dwellRadiusPx": 80, "calibrationPoints": 9},
-  "privacy": {"storeFrames": false, "onDeviceProcessing": true}
-}

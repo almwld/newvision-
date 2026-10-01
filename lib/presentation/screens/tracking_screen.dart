@@ -1,2 +1,0 @@
-import '../tracking/tracking_page.dart';
-class TrackingScreen extends TrackingPage { const TrackingScreen({super.key}); }
