@@ -58,7 +58,7 @@ class HomePage extends StatelessWidget {
               const SizedBox(height: 14),
               Container(
                 padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(color: scheme.secondaryContainer.withValues(alpha: 0.55),borderRadius: BorderRadius.circular(18)),
+                decoration: BoxDecoration(color: scheme.secondaryContainer.withOpacity(0.55),borderRadius: BorderRadius.circular(18)),
                 child: Row(crossAxisAlignment: CrossAxisAlignment.start,children: [
                   Icon(Icons.lock_outline_rounded,color: scheme.onSecondaryContainer),
                   const SizedBox(width: 12),
