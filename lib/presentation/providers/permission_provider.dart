@@ -1,104 +1,47 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:permission_handler/permission_handler.dart';
-
 import '../../platform/eye_control_platform.dart';
 
-enum PermissionType { camera, overlay, accessibility }
-
 class PermissionProvider extends ChangeNotifier with WidgetsBindingObserver {
-  PermissionProvider({EyeControlPlatform? platform})
-      : _platform = platform ?? EyeControlPlatform() {
+  PermissionProvider({EyeControlPlatform? platform}) : _platform = platform ?? EyeControlPlatform() {
     WidgetsBinding.instance.addObserver(this);
   }
-
   final EyeControlPlatform _platform;
-
-  bool camera = false;
-  bool overlay = false;
-  bool accessibility = false;
-  bool loading = false;
+  bool camera = false, overlay = false, accessibility = false, loading = false;
   String? error;
-
   bool get ready => camera && overlay && accessibility;
-
-  Map<PermissionType, bool> get statuses => {
-        PermissionType.camera: camera,
-        PermissionType.overlay: overlay,
-        PermissionType.accessibility: accessibility,
-      };
-
-  bool isGranted(PermissionType type) => statuses[type] ?? false;
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
-      refresh();
-    }
-  }
-
-  Future<Map<PermissionType, bool>> checkAll() async {
-    await refresh();
-    return statuses;
-  }
-
+  int get grantedCount => [camera, overlay, accessibility].where((v) => v).length;
+  @override void didChangeAppLifecycleState(AppLifecycleState state) { if (state == AppLifecycleState.resumed) refresh(); }
   Future<void> refresh() async {
-    if (loading) return;
-    loading = true;
-    notifyListeners();
-    try {
-      camera = await Permission.camera.isGranted;
-      overlay = await _platform.isOverlayGranted();
-      accessibility = await _platform.isAccessibilityEnabled();
-      error = null;
-    } catch (e) {
-      error = e.toString();
-    } finally {
-      loading = false;
-      notifyListeners();
-    }
+    if (loading) return; loading = true; error = null; notifyListeners();
+    try { camera = await Permission.camera.isGranted; overlay = await _platform.isOverlayGranted(); accessibility = await _platform.isAccessibilityEnabled(); }
+    catch (e) { error = 'تعذر التحقق من جاهزية النظام. حاول مرة أخرى.'; debugPrint('Permission refresh failed: $e'); }
+    finally { loading = false; notifyListeners(); }
   }
-
-  Future<void> request(PermissionType type) async {
-    switch (type) {
-      case PermissionType.camera:
-        await requestCamera();
-      case PermissionType.overlay:
-        await requestOverlay();
-      case PermissionType.accessibility:
-        await requestAccessibility();
-    }
-  }
-
-  Future<void> openSettings(PermissionType type) async {
-    switch (type) {
-      case PermissionType.camera:
-        await Permission.camera.request();
-      case PermissionType.overlay:
-        await requestOverlay();
-      case PermissionType.accessibility:
-        await requestAccessibility();
-    }
-    await refresh();
-  }
-
-  Future<void> requestCamera() async {
-    await Permission.camera.request();
-    await refresh();
-  }
-
-  Future<void> requestOverlay() async {
+  Future<void> requestCamera() async => _runRequest(() async {
+    final status = await Permission.camera.request();
+    if (status.isPermanentlyDenied) error = 'تم رفض الكاميرا نهائياً. افتح إعدادات التطبيق للسماح بها.';
+    else if (status.isDenied) error = 'يلزم السماح بالكاميرا لتشغيل تتبع النظر.';
+  });
+  Future<void> requestOverlay() async => _runRequest(() async {
     await _platform.requestOverlayPermission();
-    await refresh();
-  }
-
-  Future<void> requestAccessibility() async {
+    error = 'بعد العودة من الإعدادات سيتم التحقق تلقائياً.';
+  });
+  Future<void> requestAccessibility() async => _runRequest(() async {
     await _platform.requestAccessibilitySettings();
+    error = 'بعد العودة من الإعدادات سيتم التحقق تلقائياً.';
+  });
+  Future<void> openAppSettings() async {
+    final opened = await openAppSettings();
+    if (!opened) error = 'تعذر فتح إعدادات التطبيق.';
     await refresh();
   }
-
-  @override
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    super.dispose();
+  Future<void> _runRequest(Future<void> Function() action) async {
+    if (loading) return; loading = true; error = null; notifyListeners();
+    try { await action(); } catch (e) { error = 'تعذر تنفيذ الطلب. تحقق من إعدادات النظام وحاول مرة أخرى.'; debugPrint('Permission request failed: $e'); }
+    finally { loading = false; notifyListeners(); }
+    await refresh();
   }
+  @override void dispose() { WidgetsBinding.instance.removeObserver(this); super.dispose(); }
 }
