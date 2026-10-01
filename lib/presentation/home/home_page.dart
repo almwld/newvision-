@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+
 import '../providers/permission_provider.dart';
 import '../widgets/status_card.dart';
 
@@ -10,95 +11,149 @@ class HomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final permissions = context.watch<PermissionProvider>();
-    final scheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('NewVision'),
-        actions: [
-          IconButton(
-            tooltip: 'الإعدادات',
-            onPressed: () => context.push('/settings'),
-            icon: const Icon(Icons.settings_outlined),
-          ),
-        ],
+        title: const Text(
+          'NewVision',
+          style: TextStyle(fontWeight: FontWeight.w800),
+        ),
+        centerTitle: false,
       ),
       body: RefreshIndicator(
         onRefresh: permissions.refresh,
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
           children: [
             Container(
               padding: const EdgeInsets.all(22),
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(28),
                 gradient: LinearGradient(
-                  colors: [scheme.primary, scheme.primaryContainer],
-                  begin: AlignmentDirectional.topStart,
-                  end: AlignmentDirectional.bottomEnd,
+                  colors: [
+                    colorScheme.primaryContainer,
+                    colorScheme.surfaceContainerHighest,
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
+                borderRadius: BorderRadius.circular(28),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Row(
                 children: [
-                  Icon(Icons.visibility_rounded, size: 34, color: scheme.onPrimary),
-                  const SizedBox(height: 20),
-                  Text(
-                    'تحكم أكثر سهولة بالنظر',
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                          color: scheme.onPrimary,
-                          fontWeight: FontWeight.w800,
-                        ),
+                  Container(
+                    width: 58,
+                    height: 58,
+                    decoration: BoxDecoration(
+                      color: colorScheme.primary,
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    child: Icon(
+                      Icons.visibility_rounded,
+                      color: colorScheme.onPrimary,
+                      size: 30,
+                    ),
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'معالجة محلية، خصوصية أولاً، وتجربة مصممة للاستخدام اليومي.',
-                    style: TextStyle(color: scheme.onPrimary.withOpacity(.88)),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'تحكم بعينيك',
+                          style: theme.textTheme.headlineSmall?.copyWith(
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        const SizedBox(height: 5),
+                        Text(
+                          'معالجة محلية وسريعة دون حفظ إطارات الكاميرا.',
+                          style: theme.textTheme.bodyMedium,
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 18),
             StatusCard(
               ready: permissions.ready,
-              title: permissions.ready ? 'الجهاز جاهز' : 'أكمل متطلبات التشغيل',
+              title: permissions.ready ? 'النظام جاهز' : 'أكمل المتطلبات',
               subtitle: permissions.ready
-                  ? 'يمكنك بدء تتبع النظر.'
-                  : 'الكاميرا والعرض فوق التطبيقات وإمكانية الوصول مطلوبة.',
+                  ? 'يمكنك بدء تتبع النظر الآن.'
+                  : 'فعّل الكاميرا والعرض فوق التطبيقات وإمكانية الوصول.',
             ),
-            const SizedBox(height: 14),
+            if (permissions.error != null) ...[
+              const SizedBox(height: 12),
+              Card(
+                color: colorScheme.errorContainer,
+                child: Padding(
+                  padding: const EdgeInsets.all(14),
+                  child: Text(
+                    permissions.error!,
+                    style: TextStyle(color: colorScheme.onErrorContainer),
+                  ),
+                ),
+              ),
+            ],
+            const SizedBox(height: 18),
+            Text(
+              'التحكم',
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 10),
             _Action(
               icon: Icons.shield_outlined,
-              title: 'الصلاحيات والجاهزية',
-              subtitle: permissions.ready ? 'جميع المتطلبات مفعلة' : 'تحقق من المتطلبات',
+              title: 'الصلاحيات',
+              subtitle: 'الكاميرا والعرض فوق التطبيقات وإمكانية الوصول',
               onTap: () => context.push('/permissions'),
             ),
             _Action(
-              icon: Icons.tune_rounded,
+              icon: Icons.center_focus_strong_rounded,
               title: 'المعايرة',
-              subtitle: 'اضبط النموذج لعينك وشاشتك',
+              subtitle: 'اضبط دقة النظر قبل الاستخدام',
               onTap: () => context.push('/calibration'),
             ),
             _Action(
-              icon: Icons.visibility_rounded,
+              icon: Icons.visibility_outlined,
               title: 'تتبع النظر',
-              subtitle: 'عرض الإشارة والموضع والثقة لحظياً',
-              onTap: permissions.ready
-                  ? () => context.push('/tracking')
-                  : () => context.push('/permissions'),
+              subtitle: 'شاهد الإحداثيات والحالة لحظياً',
+              onTap: () => context.push('/tracking'),
+            ),
+            _Action(
+              icon: Icons.settings_outlined,
+              title: 'الإعدادات',
+              subtitle: 'اللغة والوضع الداكن وزمن التثبيت',
+              onTap: () => context.push('/settings'),
             ),
             _Action(
               icon: Icons.info_outline_rounded,
               title: 'حول NewVision',
-              subtitle: 'الخصوصية والإصدار ومعلومات التطبيق',
+              subtitle: 'الخصوصية والإصدار ومعلومات المشروع',
               onTap: () => context.push('/about'),
             ),
-            const SizedBox(height: 16),
-            Text(
-              'لا يتم حفظ إطارات الكاميرا؛ المعالجة تتم محلياً على الجهاز.',
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodySmall,
+            const SizedBox(height: 18),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.lock_outline_rounded,
+                  size: 16,
+                  color: theme.colorScheme.outline,
+                ),
+                const SizedBox(width: 7),
+                Text(
+                  'المعالجة محلية على الجهاز',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.outline,
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -122,10 +177,13 @@ class _Action extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+
     return Card(
-      clipBehavior: Clip.antiAlias,
+      margin: const EdgeInsets.only(bottom: 10),
       child: InkWell(
+        borderRadius: BorderRadius.circular(20),
         onTap: onTap,
         child: Padding(
           padding: const EdgeInsets.all(14),
@@ -138,16 +196,27 @@ class _Action extends StatelessWidget {
                   color: scheme.primaryContainer,
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: Icon(icon, color: scheme.onPrimaryContainer),
+                child: Icon(
+                  icon,
+                  color: scheme.onPrimaryContainer,
+                ),
               ),
               const SizedBox(width: 14),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
+                    Text(
+                      title,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
                     const SizedBox(height: 3),
-                    Text(subtitle, style: Theme.of(context).textTheme.bodySmall),
+                    Text(
+                      subtitle,
+                      style: theme.textTheme.bodySmall,
+                    ),
                   ],
                 ),
               ),
