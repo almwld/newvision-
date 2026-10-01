@@ -36,24 +36,17 @@ class HomePage extends StatelessWidget {
                       color: scheme.primaryContainer,
                       borderRadius: BorderRadius.circular(16),
                     ),
-                    child: Icon(
-                      Icons.visibility_rounded,
-                      color: scheme.onPrimaryContainer,
-                      size: 28,
-                    ),
+                    child: Icon(Icons.visibility_rounded,
+                        color: scheme.onPrimaryContainer, size: 28),
                   ),
                   const SizedBox(width: 14),
                   const Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          'NewVision',
-                          style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
+                        Text('NewVision',
+                            style: TextStyle(
+                                fontSize: 24, fontWeight: FontWeight.w800)),
                         SizedBox(height: 3),
                         Text('تحكم بالنظر على الجهاز'),
                       ],
@@ -74,9 +67,8 @@ class HomePage extends StatelessWidget {
                     ? 'الصلاحيات والمعايرة جاهزتان لبدء التتبع.'
                     : 'تحتاج إلى الصلاحيات والمعايرة قبل الاستخدام الدقيق.',
                 actionLabel: ready ? 'بدء التتبع' : 'مراجعة المتطلبات',
-                onAction: () => context.push(
-                  ready ? '/tracking' : '/permissions',
-                ),
+                onAction: () =>
+                    context.push(ready ? '/tracking' : '/permissions'),
               ),
               const SizedBox(height: 14),
               Card(
@@ -85,34 +77,29 @@ class HomePage extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'حالة النظام',
-                        style: Theme.of(context).textTheme.titleMedium
-                            ?.copyWith(fontWeight: FontWeight.w800),
-                      ),
+                      Text('حالة النظام',
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(fontWeight: FontWeight.w800)),
                       const SizedBox(height: 16),
                       Wrap(
                         spacing: 16,
                         runSpacing: 12,
                         children: [
                           StatusIndicator(
-                            active: permissions.ready,
-                            label: permissions.ready
-                                ? 'الصلاحيات جاهزة'
-                                : 'الصلاحيات ناقصة',
-                          ),
+                              active: permissions.ready,
+                              label: permissions.ready
+                                  ? 'الصلاحيات جاهزة'
+                                  : 'الصلاحيات ناقصة'),
                           StatusIndicator(
-                            active: calibration.ready,
-                            label: calibration.ready
-                                ? 'المعايرة جاهزة'
-                                : 'غير معاير',
-                          ),
+                              active: calibration.ready,
+                              label: calibration.ready
+                                  ? 'المعايرة جاهزة'
+                                  : 'غير معاير'),
                           StatusIndicator(
-                            active: tracking.latest != null,
-                            label: tracking.latest != null
-                                ? 'التتبع متصل'
-                                : 'التتبع متوقف',
-                          ),
+                              active: tracking.latest != null,
+                              label: tracking.latest != null
+                                  ? 'التتبع متصل'
+                                  : 'التتبع متوقف'),
                         ],
                       ),
                     ],
@@ -150,15 +137,14 @@ class HomePage extends StatelessWidget {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(
-                      Icons.lock_outline_rounded,
-                      color: scheme.onSecondaryContainer,
-                    ),
+                    Icon(Icons.lock_outline_rounded,
+                        color: scheme.onSecondaryContainer),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
                         'الخصوصية أولاً: معالجة العين تتم محلياً على الجهاز ولا تحتاج إطارات الكاميرا إلى الرفع إلى خادم.',
-                        style: TextStyle(color: scheme.onSecondaryContainer),
+                        style:
+                            TextStyle(color: scheme.onSecondaryContainer),
                       ),
                     ),
                   ],
@@ -190,7 +176,6 @@ class _ActionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-
     return Card(
       child: InkWell(
         onTap: enabled ? onTap : null,
@@ -208,36 +193,29 @@ class _ActionCard extends StatelessWidget {
                       : scheme.surfaceContainerHighest,
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: Icon(
-                  icon,
-                  color: enabled
-                      ? scheme.onPrimaryContainer
-                      : scheme.onSurfaceVariant,
-                ),
+                child: Icon(icon,
+                    color: enabled
+                        ? scheme.onPrimaryContainer
+                        : scheme.onSurfaceVariant),
               ),
               const SizedBox(width: 14),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      title,
-                      style: const TextStyle(fontWeight: FontWeight.w800),
-                    ),
+                    Text(title,
+                        style:
+                            const TextStyle(fontWeight: FontWeight.w800)),
                     const SizedBox(height: 3),
-                    Text(
-                      subtitle,
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
+                    Text(subtitle,
+                        style: Theme.of(context).textTheme.bodySmall),
                   ],
                 ),
               ),
               const SizedBox(width: 8),
-              Icon(
-                Icons.arrow_forward_ios_rounded,
-                size: 16,
-                color: enabled ? null : scheme.onSurfaceVariant,
-              ),
+              Icon(Icons.arrow_forward_ios_rounded,
+                  size: 16,
+                  color: enabled ? null : scheme.onSurfaceVariant),
             ],
           ),
         ),
