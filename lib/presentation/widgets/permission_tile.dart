@@ -19,55 +19,32 @@ class PermissionTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        child: Row(
-          children: [
-            Container(
-              width: 46,
-              height: 46,
-              decoration: BoxDecoration(
-                color: granted
-                    ? scheme.primaryContainer
-                    : scheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Icon(
-                granted ? Icons.check_rounded : icon,
-                color: granted
-                    ? scheme.onPrimaryContainer
-                    : scheme.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(fontWeight: FontWeight.w800),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    subtitle,
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 10),
-            if (granted)
-              Icon(Icons.verified_rounded, color: scheme.primary)
-            else
-              OutlinedButton(
-                onPressed: onPressed,
-                child: const Text('سماح'),
-              ),
-          ],
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+        leading: Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            color: granted ? scheme.primaryContainer : scheme.surfaceContainerHighest,
+            shape: BoxShape.circle,
+          ),
+          child: Icon(
+            granted ? Icons.check_rounded : icon,
+            color: granted ? scheme.onPrimaryContainer : scheme.onSurfaceVariant,
+          ),
         ),
+        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
+        subtitle: Padding(
+          padding: const EdgeInsets.only(top: 3),
+          child: Text(subtitle),
+        ),
+        trailing: granted
+            ? Icon(Icons.verified_rounded, color: scheme.primary)
+            : FilledButton.tonal(
+                onPressed: onPressed,
+                child: const Text('تفعيل'),
+              ),
       ),
     );
   }

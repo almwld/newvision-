@@ -1,1 +1,1 @@
-import '../permissions/permissions_page.dart'; class PermissionsScreen extends PermissionsPage { const PermissionsScreen({super.key}); }
+export '../permissions/permissions_page.dart' show PermissionsPage;

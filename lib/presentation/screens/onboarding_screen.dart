@@ -1,1 +1,1 @@
-import '../onboarding/onboarding_page.dart'; class OnboardingScreen extends OnboardingPage { const OnboardingScreen({super.key}); }
+export '../onboarding/onboarding_page.dart' show OnboardingPage;

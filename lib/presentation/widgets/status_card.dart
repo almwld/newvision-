@@ -19,12 +19,8 @@ class StatusCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final background =
-        ready ? scheme.primaryContainer : scheme.surfaceContainerHighest;
-    final foreground = ready ? scheme.onPrimaryContainer : scheme.onSurface;
-
     return Card(
-      color: background,
+      color: ready ? scheme.primaryContainer : scheme.surfaceContainerHighest,
       child: Padding(
         padding: const EdgeInsets.all(18),
         child: Row(
@@ -34,12 +30,12 @@ class StatusCard extends StatelessWidget {
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                color: foreground.withOpacity(0.10),
+                color: ready ? scheme.primary : scheme.surface,
                 shape: BoxShape.circle,
               ),
               child: Icon(
                 ready ? Icons.check_rounded : Icons.info_outline_rounded,
-                color: foreground,
+                color: ready ? scheme.onPrimary : scheme.onSurface,
               ),
             ),
             const SizedBox(width: 14),
@@ -49,19 +45,22 @@ class StatusCard extends StatelessWidget {
                 children: [
                   Text(
                     title,
-                    style: TextStyle(
-                      color: foreground,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 16,
-                    ),
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleMedium
+                        ?.copyWith(fontWeight: FontWeight.w800),
                   ),
                   const SizedBox(height: 5),
                   Text(
                     subtitle,
-                    style: TextStyle(color: foreground.withOpacity(0.82)),
+                    style: TextStyle(
+                      color: ready
+                          ? scheme.onPrimaryContainer
+                          : scheme.onSurfaceVariant,
+                    ),
                   ),
-                  if (actionLabel != null && onAction != null) ...[
-                    const SizedBox(height: 12),
+                  if (actionLabel != null) ...[
+                    const SizedBox(height: 14),
                     Align(
                       alignment: AlignmentDirectional.centerStart,
                       child: FilledButton.tonal(
