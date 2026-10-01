@@ -14,25 +14,24 @@ class GazeCursor extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = Theme.of(context).colorScheme.primary;
-
+    final scheme = Theme.of(context).colorScheme;
     return Positioned(
       left: x - 18,
       top: y - 18,
       child: IgnorePointer(
         child: AnimatedOpacity(
-          opacity: blinking ? 0.35 : 1,
+          opacity: blinking ? 0.3 : 1,
           duration: const Duration(milliseconds: 100),
           child: Container(
             width: 36,
             height: 36,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: color.withOpacity(0.10),
-              border: Border.all(color: color, width: 3),
+              color: scheme.primary.withOpacity(0.12),
+              border: Border.all(width: 3, color: scheme.primary),
               boxShadow: [
                 BoxShadow(
-                  color: color.withOpacity(0.22),
+                  color: scheme.primary.withOpacity(0.18),
                   blurRadius: 12,
                   spreadRadius: 2,
                 ),
@@ -40,10 +39,10 @@ class GazeCursor extends StatelessWidget {
             ),
             child: Center(
               child: Container(
-                width: 6,
-                height: 6,
+                width: 7,
+                height: 7,
                 decoration: BoxDecoration(
-                  color: color,
+                  color: scheme.primary,
                   shape: BoxShape.circle,
                 ),
               ),

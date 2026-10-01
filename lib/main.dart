@@ -34,8 +34,10 @@ class EyeControlApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final settings = context.watch<SettingsProvider>();
-    final lightScheme =
-        ColorScheme.fromSeed(seedColor: const Color(0xFF0A8F83));
+    final lightScheme = ColorScheme.fromSeed(
+      seedColor: const Color(0xFF0A8F83),
+      brightness: Brightness.light,
+    );
     final darkScheme = ColorScheme.fromSeed(
       seedColor: const Color(0xFF0A8F83),
       brightness: Brightness.dark,
@@ -57,6 +59,16 @@ class EyeControlApp extends StatelessWidget {
       appBarTheme: const AppBarTheme(
         centerTitle: false,
         scrolledUnderElevation: 0,
+        surfaceTintColor: Colors.transparent,
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          minimumSize: const Size(48, 48),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        ),
+      ),
+      iconButtonTheme: IconButtonThemeData(
+        style: IconButton.styleFrom(minimumSize: const Size(48, 48)),
       ),
     );
 
