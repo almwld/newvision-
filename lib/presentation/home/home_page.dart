@@ -1,3 +1,97 @@
-import 'package:flutter/material.dart';import 'package:go_router/go_router.dart';import 'package:provider/provider.dart';import '../providers/permission_provider.dart';import '../providers/calibration_provider.dart';import '../widgets/status_card.dart';
-class HomePage extends StatelessWidget{const HomePage({super.key});@override Widget build(BuildContext c){final p=c.watch<PermissionProvider>();final cal=c.watch<CalibrationProvider>();final s=Theme.of(c).colorScheme;final ready=p.ready&&cal.ready;return Scaffold(body:CustomScrollView(slivers:[SliverAppBar.large(pinned:true,title:const Text('NewVision'),actions:[IconButton(tooltip:'الإعدادات',onPressed:()=>c.push('/settings'),icon:const Icon(Icons.settings_outlined))]),SliverPadding(padding:const EdgeInsets.fromLTRB(20,4,20,32),sliver:SliverList(delegate:SliverChildListDelegate([Container(padding:const EdgeInsets.all(22),decoration:BoxDecoration(gradient:LinearGradient(colors:[s.primary,Color.alphaBlend(s.primaryContainer,s.primary)],begin:AlignmentDirectional.topStart,end:AlignmentDirectional.bottomEnd),borderRadius:BorderRadius.circular(28)),child:Row(children:[Container(width:64,height:64,decoration:BoxDecoration(color:s.onPrimary.withOpacity(.14),shape:BoxShape.circle),child:Icon(ready?Icons.check_rounded:Icons.visibility_rounded,color:s.onPrimary,size:34)),const SizedBox(width:16),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text(ready?'كل شيء جاهز':'تحكم أكثر سهولة',style:TextStyle(color:s.onPrimary,fontSize:21,fontWeight:FontWeight.w800)),const SizedBox(height:5),Text(ready?'يمكنك بدء جلسة التتبع الآن.':'وجّه نظرك واترك NewVision يتولى الباقي.',style:TextStyle(color:s.onPrimary.withOpacity(.84)))]))])),const SizedBox(height:16),StatusCard(ready:ready,title:ready?'جاهز للتحكم بالنظر':'أكمل إعداد NewVision',subtitle:ready?'المعايرة والصلاحيات الأساسية جاهزة.':'فعّل الصلاحيات وأكمل المعايرة للحصول على تجربة مستقرة.'),const SizedBox(height:22),Text('الأدوات',style:Theme.of(c).textTheme.titleMedium?.copyWith(fontWeight:FontWeight.w800)),const SizedBox(height:10),_Action(icon:Icons.shield_outlined,title:'الصلاحيات',subtitle:'الكاميرا، العرض وإمكانية الوصول',onTap:()=>c.push('/permissions')),_Action(icon:Icons.center_focus_strong_rounded,title:'المعايرة',subtitle:cal.ready?'المعايرة محفوظة محلياً':'أنشئ معايرة شخصية جديدة',onTap:()=>c.push('/calibration')),_Action(icon:Icons.visibility_rounded,title:'تتبع النظر',subtitle:'عرض الإشارة والثقة لحظياً',onTap:()=>c.push('/tracking')),const SizedBox(height:18),Card(color:s.primaryContainer.withOpacity(.65),child:Padding(padding:const EdgeInsets.all(16),child:Row(children:[Icon(Icons.lock_outline_rounded,color:s.onPrimaryContainer),const SizedBox(width:12),Expanded(child:Text('المعالجة محلية على الجهاز. لا يتم رفع إطارات الكاميرا إلى خادم.',style:TextStyle(color:s.onPrimaryContainer)))])))])))]));}}
-class _Action extends StatelessWidget{const _Action({required this.icon,required this.title,required this.subtitle,required this.onTap});final IconData icon;final String title,subtitle;final VoidCallback onTap;@override Widget build(BuildContext c)=>Card(child:InkWell(borderRadius:BorderRadius.circular(20),onTap:onTap,child:Padding(padding:const EdgeInsets.all(14),child:Row(children:[Container(width:46,height:46,decoration:BoxDecoration(color:Theme.of(c).colorScheme.primaryContainer,borderRadius:BorderRadius.circular(14)),child:Icon(icon,color:Theme.of(c).colorScheme.onPrimaryContainer)),const SizedBox(width:14),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text(title,style:const TextStyle(fontWeight:FontWeight.w800)),const SizedBox(height:3),Text(subtitle,style:Theme.of(c).textTheme.bodySmall)])),const Icon(Icons.arrow_forward_ios_rounded,size:16)]))));}}
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
+import '../providers/calibration_provider.dart';
+import '../providers/permission_provider.dart';
+import '../providers/tracking_provider.dart';
+import '../widgets/status_card.dart';
+import '../widgets/status_indicator.dart';
+
+class HomePage extends StatelessWidget {
+  const HomePage({super.key});
+  @override
+  Widget build(BuildContext context) {
+    final permissions = context.watch<PermissionProvider>();
+    final calibration = context.watch<CalibrationProvider>();
+    final tracking = context.watch<TrackingProvider>();
+    final scheme = Theme.of(context).colorScheme;
+    final ready = permissions.ready && calibration.ready;
+    return Scaffold(
+      body: SafeArea(
+        child: RefreshIndicator(
+          onRefresh: permissions.refresh,
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(20, 18, 20, 32),
+            children: [
+              Row(children: [
+                Container(width: 52,height: 52,decoration: BoxDecoration(color: scheme.primaryContainer,borderRadius: BorderRadius.circular(16)),child: Icon(Icons.visibility_rounded,color: scheme.onPrimaryContainer,size: 28)),
+                const SizedBox(width: 14),
+                const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start,children: [
+                  Text('NewVision',style: TextStyle(fontSize: 24,fontWeight: FontWeight.w800)),
+                  SizedBox(height: 3),Text('تحكم بالنظر على الجهاز'),
+                ])),
+                IconButton(tooltip: 'الإعدادات',onPressed: () => context.push('/settings'),icon: const Icon(Icons.settings_outlined)),
+              ]),
+              const SizedBox(height: 22),
+              StatusCard(
+                ready: ready,
+                title: ready ? 'جاهز للاستخدام' : 'أكمل الإعداد',
+                subtitle: ready ? 'الصلاحيات والمعايرة جاهزتان لبدء التتبع.' : 'تحتاج إلى الصلاحيات والمعايرة قبل الاستخدام الدقيق.',
+                actionLabel: ready ? 'بدء التتبع' : 'مراجعة المتطلبات',
+                onAction: () => context.push(ready ? '/tracking' : '/permissions'),
+              ),
+              const SizedBox(height: 14),
+              Card(child: Padding(padding: const EdgeInsets.all(18),child: Column(crossAxisAlignment: CrossAxisAlignment.start,children: [
+                Text('حالة النظام',style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
+                const SizedBox(height: 16),
+                Wrap(spacing: 16,runSpacing: 12,children: [
+                  StatusIndicator(active: permissions.ready,label: permissions.ready ? 'الصلاحيات جاهزة' : 'الصلاحيات ناقصة'),
+                  StatusIndicator(active: calibration.ready,label: calibration.ready ? 'المعايرة جاهزة' : 'غير معاير'),
+                  StatusIndicator(active: tracking.latest != null,label: tracking.latest != null ? 'التتبع متصل' : 'التتبع متوقف'),
+                ]),
+              ]))),
+              const SizedBox(height: 14),
+              _ActionCard(icon: Icons.tune_rounded,title: calibration.ready ? 'إعادة المعايرة' : 'معايرة النظر',subtitle: 'اضبط النموذج حسب وضعية نظرك الحالية.',onTap: () => context.push('/calibration')),
+              _ActionCard(icon: Icons.visibility_rounded,title: 'تتبع النظر',subtitle: 'راقب الإحداثيات والثقة وحالة الرمش لحظياً.',enabled: permissions.ready,onTap: () => context.push('/tracking')),
+              _ActionCard(icon: Icons.shield_outlined,title: 'الصلاحيات',subtitle: 'راجع حالة الكاميرا والعرض فوق التطبيقات وإمكانية الوصول.',onTap: () => context.push('/permissions')),
+              const SizedBox(height: 14),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(color: scheme.secondaryContainer.withValues(alpha: 0.55),borderRadius: BorderRadius.circular(18)),
+                child: Row(crossAxisAlignment: CrossAxisAlignment.start,children: [
+                  Icon(Icons.lock_outline_rounded,color: scheme.onSecondaryContainer),
+                  const SizedBox(width: 12),
+                  Expanded(child: Text('الخصوصية أولاً: معالجة العين تتم محلياً على الجهاز ولا تحتاج إطارات الكاميرا إلى الرفع إلى خادم.',style: TextStyle(color: scheme.onSecondaryContainer))),
+                ]),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ActionCard extends StatelessWidget {
+  const _ActionCard({required this.icon,required this.title,required this.subtitle,required this.onTap,this.enabled = true});
+  final IconData icon; final String title; final String subtitle; final VoidCallback onTap; final bool enabled;
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Card(child: InkWell(
+      onTap: enabled ? onTap : null,
+      borderRadius: BorderRadius.circular(20),
+      child: Padding(padding: const EdgeInsets.all(14),child: Row(children: [
+        Container(width: 46,height: 46,decoration: BoxDecoration(color: enabled ? scheme.primaryContainer : scheme.surfaceContainerHighest,borderRadius: BorderRadius.circular(14)),child: Icon(icon,color: enabled ? scheme.onPrimaryContainer : scheme.onSurfaceVariant)),
+        const SizedBox(width: 14),
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start,children: [
+          Text(title,style: const TextStyle(fontWeight: FontWeight.w800)),
+          const SizedBox(height: 3),Text(subtitle,style: Theme.of(context).textTheme.bodySmall),
+        ])),
+        const SizedBox(width: 8),
+        Icon(Icons.arrow_forward_ios_rounded,size: 16,color: enabled ? null : scheme.onSurfaceVariant),
+      ])),
+    ));
+  }
+}

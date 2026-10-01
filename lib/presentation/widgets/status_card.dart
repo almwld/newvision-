@@ -1,1 +1,24 @@
-import 'package:flutter/material.dart';class StatusCard extends StatelessWidget{const StatusCard({super.key,required this.ready,required this.title,required this.subtitle});final bool ready;final String title,subtitle;@override Widget build(BuildContext c){final s=Theme.of(c).colorScheme;return Card(child:Padding(padding:const EdgeInsets.all(16),child:Row(children:[Container(width:44,height:44,decoration:BoxDecoration(color:ready?s.primaryContainer:s.surfaceContainerHighest,shape:BoxShape.circle),child:Icon(ready?Icons.check_circle_rounded:Icons.info_outline_rounded,color:ready?s.primary:s.onSurfaceVariant)),const SizedBox(width:14),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text(title,style:const TextStyle(fontWeight:FontWeight.w800)),const SizedBox(height:4),Text(subtitle,style:Theme.of(c).textTheme.bodySmall)]))])));}}
+import 'package:flutter/material.dart';
+
+class StatusCard extends StatelessWidget {
+  const StatusCard({super.key,required this.ready,required this.title,required this.subtitle,this.actionLabel,this.onAction});
+  final bool ready; final String title; final String subtitle; final String? actionLabel; final VoidCallback? onAction;
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final background = ready ? scheme.primaryContainer : scheme.surfaceContainerHighest;
+    final foreground = ready ? scheme.onPrimaryContainer : scheme.onSurface;
+    return Card(color: background,child: Padding(padding: const EdgeInsets.all(18),child: Row(crossAxisAlignment: CrossAxisAlignment.start,children: [
+      Container(width: 44,height: 44,decoration: BoxDecoration(color: foreground.withValues(alpha: 0.10),shape: BoxShape.circle),child: Icon(ready ? Icons.check_rounded : Icons.info_outline_rounded,color: foreground)),
+      const SizedBox(width: 14),
+      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start,children: [
+        Text(title,style: TextStyle(color: foreground,fontWeight: FontWeight.w800,fontSize: 16)),
+        const SizedBox(height: 5),Text(subtitle,style: TextStyle(color: foreground.withValues(alpha: 0.82))),
+        if (actionLabel != null && onAction != null) ...[
+          const SizedBox(height: 12),
+          Align(alignment: AlignmentDirectional.centerStart,child: FilledButton.tonal(onPressed: onAction,child: Text(actionLabel!))),
+        ],
+      ])),
+    ])));
+  }
+}
