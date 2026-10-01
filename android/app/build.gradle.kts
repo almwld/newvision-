@@ -3,11 +3,9 @@ plugins {
     id("org.jetbrains.kotlin.android")
     id("dev.flutter.flutter-gradle-plugin")
 }
-
 android {
     namespace = "com.eyecontrol"
     compileSdk = 34
-
     defaultConfig {
         applicationId = "com.eyecontrol"
         minSdk = 24
@@ -15,7 +13,6 @@ android {
         versionCode = 1
         versionName = "1.0.0"
     }
-
     splits {
         abi {
             isEnable = true
@@ -24,33 +21,32 @@ android {
             isUniversalApk = false
         }
     }
-
     val releaseStorePath = System.getenv("ANDROID_KEYSTORE_PATH")
     val releaseStorePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD")
     val releaseKeyAlias = System.getenv("ANDROID_KEY_ALIAS")
     val releaseKeyPassword = System.getenv("ANDROID_KEY_PASSWORD")
-
+    val hasReleaseSigning = !releaseStorePath.isNullOrBlank() &&
+        !releaseStorePassword.isNullOrBlank() &&
+        !releaseKeyAlias.isNullOrBlank() &&
+        !releaseKeyPassword.isNullOrBlank()
     signingConfigs {
-        if (!releaseStorePath.isNullOrBlank() &&
-            !releaseStorePassword.isNullOrBlank() &&
-            !releaseKeyAlias.isNullOrBlank() &&
-            !releaseKeyPassword.isNullOrBlank()
-        ) {
+        if (hasReleaseSigning) {
             create("release") {
-                storeFile = file(releaseStorePath)
+                storeFile = file(releaseStorePath!!)
                 storePassword = releaseStorePassword
                 keyAlias = releaseKeyAlias
                 keyPassword = releaseKeyPassword
+                enableV1Signing = true
+                enableV2Signing = true
             }
         }
     }
-
     buildTypes {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
-            if (!releaseStorePath.isNullOrBlank()) {
-                signingConfig = signingConfigs.findByName("release")
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.getByName("release")
             }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
@@ -58,20 +54,12 @@ android {
             )
         }
     }
-
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-
-    kotlinOptions {
-        jvmTarget = "17"
-    }
-
-    androidResources {
-        noCompress += "task"
-    }
-
+    kotlinOptions { jvmTarget = "17" }
+    androidResources { noCompress += "task" }
     packaging {
         resources {
             excludes += setOf(
@@ -83,7 +71,6 @@ android {
         }
     }
 }
-
 dependencies {
     implementation("androidx.core:core-ktx:1.12.0")
     implementation("androidx.appcompat:appcompat:1.6.1")
