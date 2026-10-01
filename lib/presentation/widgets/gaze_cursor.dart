@@ -21,7 +21,7 @@ class GazeCursor extends StatelessWidget {
       top: y - 18,
       child: IgnorePointer(
         child: AnimatedOpacity(
-          opacity: blinking ? 0.28 : 1,
+          opacity: blinking ? 0.35 : 1,
           duration: const Duration(milliseconds: 100),
           child: Container(
             width: 36,
