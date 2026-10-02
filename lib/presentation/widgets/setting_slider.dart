@@ -5,15 +5,21 @@ class SettingSlider extends StatelessWidget {
   final double value;
   final String label;
   final ValueChanged<double> onChanged;
+
   @override
   Widget build(BuildContext context) {
-    final clamped = value.clamp(500.0, 2000.0).toDouble();
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Row(children: [
-        Expanded(child: Text(label, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700))),
-        Text(clamped.round().toString() + ' ms', style: Theme.of(context).textTheme.labelLarge),
-      ]),
-      Slider(value: clamped, min: 500, max: 2000, divisions: 15, label: clamped.round().toString() + ' ms', onChanged: onChanged),
-    ]);
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final milliseconds = value.round();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(children: [
+          Expanded(child: Text(label, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700))),
+          Text('$milliseconds ms', style: theme.textTheme.labelLarge?.copyWith(color: scheme.primary, fontWeight: FontWeight.w800)),
+        ]),
+        Slider(value: value.clamp(500, 2000), min: 500, max: 2000, divisions: 15, label: '$milliseconds ms', onChanged: onChanged),
+      ],
+    );
   }
 }
