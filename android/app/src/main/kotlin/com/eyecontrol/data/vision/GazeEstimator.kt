@@ -34,7 +34,7 @@ class GazeEstimator(context: Context) : AutoCloseable {
 
     private val model: CompiledModel
     private val inputBuffer: TensorBuffer
-    private val outputBuffers: Array<TensorBuffer>
+    private val outputBuffers: List<TensorBuffer>
     private val accelerator: Accelerator
 
     init {
@@ -84,7 +84,7 @@ class GazeEstimator(context: Context) : AutoCloseable {
             if (resized !== faceBitmap) resized.recycle()
 
             inputBuffer.writeFloat(input)
-            model.run(arrayOf(inputBuffer), outputBuffers)
+            model.run(listOf(inputBuffer), outputBuffers)
 
             val yaw = decodeAngle(outputBuffers[0].readFloat())
             val pitch = decodeAngle(outputBuffers[1].readFloat())
