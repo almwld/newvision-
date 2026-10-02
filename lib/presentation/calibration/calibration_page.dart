@@ -37,7 +37,9 @@ class _CalibrationPageState extends State<CalibrationPage> {
     if(!_running || _index<0 || _index>=targets.length) return;
     _current.clear(); var ticks=0; _timer?.cancel();
     _timer=Timer.periodic(const Duration(milliseconds:50),(timer) async {
-      if (_reading || !_running) {\n        return;\n      }
+      if (_reading || !_running) {
+        return;
+      }
       _reading=true; ticks++;
       try {
         final gaze=await _platform.latestGaze(); final confidence=gaze?['confidence'];
