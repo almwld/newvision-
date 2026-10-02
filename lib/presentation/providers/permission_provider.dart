@@ -7,11 +7,18 @@ class PermissionProvider extends ChangeNotifier with WidgetsBindingObserver {
       : _platform = platform ?? EyeControlPlatform() {
     WidgetsBinding.instance.addObserver(this);
   }
+
   final EyeControlPlatform _platform;
-  bool camera = false, overlay = false, accessibility = false, loading = false;
+  bool camera = false;
+  bool overlay = false;
+  bool accessibility = false;
+  bool loading = false;
   String? error;
+
   bool get ready => camera && overlay && accessibility;
   int get completedCount => [camera, overlay, accessibility].where((v) => v).length;
+  bool get canRequestOverlay => camera;
+  bool get canRequestAccessibility => camera && overlay;
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
@@ -19,7 +26,10 @@ class PermissionProvider extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   Future<void> refresh() async {
-    loading = true; error = null; notifyListeners();
+    if (loading) return;
+    loading = true;
+    error = null;
+    notifyListeners();
     try {
       camera = await permissions.Permission.camera.isGranted;
       overlay = await _platform.isOverlayGranted();
@@ -27,41 +37,58 @@ class PermissionProvider extends ChangeNotifier with WidgetsBindingObserver {
     } catch (e) {
       error = e.toString();
     } finally {
-      loading = false; notifyListeners();
+      loading = false;
+      notifyListeners();
     }
   }
 
   Future<void> requestCamera() async {
-    await permissions.Permission.camera.request();
+    if (loading) return;
+    loading = true;
+    error = null;
+    notifyListeners();
+    try {
+      await permissions.Permission.camera.request();
+    } catch (e) {
+      error = e.toString();
+    }
+    loading = false;
     await refresh();
   }
 
   Future<void> requestOverlay() async {
-    error = null; notifyListeners();
+    if (loading || !camera) return;
+    loading = true;
+    error = null;
+    notifyListeners();
     try {
       await _platform.requestOverlayPermission();
-      overlay = true;
-      await refresh();
     } catch (e) {
-      error = e.toString(); notifyListeners();
+      error = e.toString();
     }
+    loading = false;
+    await refresh();
   }
 
   Future<void> requestAccessibility() async {
-    error = null; notifyListeners();
+    if (loading || !camera || !overlay) return;
+    loading = true;
+    error = null;
+    notifyListeners();
     try {
       await _platform.requestAccessibilitySettings();
-      accessibility = true;
-      await refresh();
     } catch (e) {
-      error = e.toString(); notifyListeners();
+      error = e.toString();
     }
+    loading = false;
+    await refresh();
   }
 
   Future<void> openAppSettings() async {
     final opened = await permissions.openAppSettings();
     if (!opened) {
-      error = 'تعذر فتح إعدادات التطبيق.'; notifyListeners();
+      error = 'تعذر فتح إعدادات التطبيق.';
+      notifyListeners();
     }
   }
 
