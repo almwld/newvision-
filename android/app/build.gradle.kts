@@ -34,6 +34,10 @@ android {
     val hasReleaseSigning = listOf(releaseStorePath, releaseStorePassword, releaseKeyAlias, releaseKeyPassword).all { !it.isNullOrBlank() }
 
     signingConfigs {
+        getByName("debug") {
+            enableV1Signing = true
+            enableV2Signing = true
+        }
         if (hasReleaseSigning) {
             create("release") {
                 storeFile = file(requireNotNull(releaseStorePath))
