@@ -5,7 +5,6 @@ import android.graphics.Bitmap
 import android.graphics.Matrix
 import android.os.SystemClock
 import androidx.camera.core.ImageProxy
-import com.eyecontrol.core.constants.NativeConstants
 import com.eyecontrol.core.logging.AppLogger
 import com.eyecontrol.domain.model.GazeSample
 import com.eyecontrol.domain.repository.GazeRepository
@@ -30,21 +29,39 @@ class FaceLandmarkerAnalyzer(
     private val irisNormalizer = IrisNormalizer()
 
     init {
-        val baseOptions = BaseOptions.builder()
-            .setModelAssetPath(NativeConstants.MODEL_ASSET)
-            .build()
-        val options = FaceLandmarker.FaceLandmarkerOptions.builder()
-            .setBaseOptions(baseOptions)
-            .setMinFaceDetectionConfidence(0.5f)
-            .setMinFacePresenceConfidence(0.5f)
-            .setMinTrackingConfidence(0.5f)
-            .setNumFaces(1)
-            .setOutputFaceBlendshapes(true)
-            .setRunningMode(RunningMode.LIVE_STREAM)
-            .setResultListener(this::onResult)
-            .setErrorListener { error -> AppLogger.e("MediaPipe error", error) }
-            .build()
-        landmarker = FaceLandmarker.createFromOptions(context, options)
+        landmarker = tryLoadModel(context, "assets/models/face_landmarker.task")
+            ?: tryLoadModel(context, "models/face_landmarker.task")
+            ?: tryLoadModel(context, "face_landmarker.task")
+            ?: throw IllegalStateException("Could not load face_landmarker.task from any path")
+    }
+
+    private fun tryLoadModel(context: Context, path: String): FaceLandmarker? {
+        return try {
+            android.util.Log.d("FaceLandmarker", "Trying to load: $path")
+            val baseOptions = BaseOptions.builder()
+                .setModelAssetPath(path)
+                .build()
+            val options = FaceLandmarker.FaceLandmarkerOptions.builder()
+                .setBaseOptions(baseOptions)
+                .setMinFaceDetectionConfidence(0.5f)
+                .setMinFacePresenceConfidence(0.5f)
+                .setMinTrackingConfidence(0.5f)
+                .setNumFaces(1)
+                .setOutputFaceBlendshapes(true)
+                .setRunningMode(RunningMode.LIVE_STREAM)
+                .setResultListener(this::onResult)
+                .setErrorListener { error ->
+                    android.util.Log.e("FaceLandmarker", "MediaPipe error: ${error.message}", error)
+                    AppLogger.e("MediaPipe error", error)
+                }
+                .build()
+            val result = FaceLandmarker.createFromOptions(context, options)
+            android.util.Log.d("FaceLandmarker", "Successfully loaded: $path")
+            result
+        } catch (e: Exception) {
+            android.util.Log.w("FaceLandmarker", "Failed to load $path: ${e.message}")
+            null
+        }
     }
 
     fun analyze(imageProxy: ImageProxy, frontCamera: Boolean) {
@@ -74,6 +91,7 @@ class FaceLandmarkerAnalyzer(
             if (transformed !== bitmap) bitmap.recycle()
             landmarker.detectAsync(BitmapImageBuilder(transformed).build(), timestamp)
         } catch (error: Exception) {
+            android.util.Log.e("FaceLandmarker", "Frame analysis failed: ${error.message}", error)
             AppLogger.e("Frame analysis failed", error)
         } finally {
             imageProxy.close()

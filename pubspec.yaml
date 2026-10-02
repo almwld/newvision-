@@ -35,6 +35,7 @@ flutter:
   generate: true
   uses-material-design: true
   assets:
+    - assets/face_landmarker.task
     - assets/models/
     - assets/config/
     - assets/translations/

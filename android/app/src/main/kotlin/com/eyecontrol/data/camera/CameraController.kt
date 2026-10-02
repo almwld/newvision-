@@ -1,5 +1,6 @@
 package com.eyecontrol.data.camera
 
+import android.util.Log
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.lifecycle.ProcessCameraProvider
@@ -25,39 +26,41 @@ class CameraController(
     private var analyzer: FaceLandmarkerAnalyzer? = null
 
     fun start() {
+        Log.d("CameraController", "Starting camera...")
         val future = ProcessCameraProvider.getInstance(context)
-        future.addListener(
-            {
-                try {
-                    val cameraProvider = future.get()
-                    provider = cameraProvider
-                    analyzer?.close()
-                    analyzer = FaceLandmarkerAnalyzer(context, repository)
+        future.addListener({
+            try {
+                val cameraProvider = future.get()
+                provider = cameraProvider
+                Log.d("CameraController", "Camera provider obtained")
 
-                    val analysis = ImageAnalysis.Builder()
-                        .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_RGBA_8888)
-                        .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                        .setImageQueueDepth(1)
-                        .build()
+                analyzer?.close()
+                analyzer = FaceLandmarkerAnalyzer(context, repository)
+                Log.d("CameraController", "Analyzer created")
 
-                    val faceAnalyzer = analyzer ?: return@addListener
-                    analysis.setAnalyzer(executor) { image ->
-                        faceAnalyzer.analyze(image, frontCamera = true)
-                    }
+                val analysis = ImageAnalysis.Builder()
+                    .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_RGBA_8888)
+                    .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                    .setImageQueueDepth(1)
+                    .build()
 
-                    cameraProvider.unbindAll()
-                    cameraProvider.bindToLifecycle(
-                        lifecycleOwner,
-                        CameraSelector.DEFAULT_FRONT_CAMERA,
-                        analysis,
-                    )
-                    AppLogger.i("Camera analysis started at 30 FPS target")
-                } catch (error: Exception) {
-                    AppLogger.e("Unable to start camera analysis", error)
+                val faceAnalyzer = analyzer ?: return@addListener
+                analysis.setAnalyzer(executor) { image ->
+                    faceAnalyzer.analyze(image, frontCamera = true)
                 }
-            },
-            ContextCompat.getMainExecutor(context),
-        )
+
+                cameraProvider.unbindAll()
+                cameraProvider.bindToLifecycle(
+                    lifecycleOwner,
+                    CameraSelector.DEFAULT_FRONT_CAMERA,
+                    analysis,
+                )
+                Log.d("CameraController", "Camera bound successfully")
+            } catch (e: Exception) {
+                Log.e("CameraController", "Failed to start camera: ${e.message}", e)
+                AppLogger.e("Camera start error", e)
+            }
+        }, ContextCompat.getMainExecutor(context))
     }
 
     fun stop() {
