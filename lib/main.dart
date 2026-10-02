@@ -40,11 +40,11 @@ class EyeControlApp extends StatelessWidget {
       visualDensity: VisualDensity.standard,
       splashFactory: InkSparkle.splashFactory,
       pageTransitionsTheme: const PageTransitionsTheme(builders: {
-        TargetPlatform.android: FadeForwardsPageTransitionsBuilder(),
+        TargetPlatform.android: FadeUpwardsPageTransitionsBuilder(),
         TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
-        TargetPlatform.linux: FadeForwardsPageTransitionsBuilder(),
+        TargetPlatform.linux: FadeUpwardsPageTransitionsBuilder(),
         TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
-        TargetPlatform.windows: FadeForwardsPageTransitionsBuilder(),
+        TargetPlatform.windows: FadeUpwardsPageTransitionsBuilder(),
       }),
       appBarTheme: AppBarTheme(
         centerTitle: false,
