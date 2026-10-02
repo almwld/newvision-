@@ -111,6 +111,14 @@ jobs:
         run: |
           set -euo pipefail
           APKSIGNER="$(find "$ANDROID_HOME/build-tools" -path '*/apksigner' -type f | sort -V | tail -n 1)"
+          test -n "$APKSIGNER"
+          mkdir -p "$HOME/.android"
+          if [ ! -f "$HOME/.android/debug.keystore" ]; then
+            keytool -genkeypair -v               -keystore "$HOME/.android/debug.keystore"               -storepass android               -alias androiddebugkey               -keypass android               -keyalg RSA               -keysize 2048               -validity 10000               -dname "CN=Android Debug,O=Android,C=US"
+          fi
+          while IFS= read -r APK; do
+            "$APKSIGNER" sign               --ks "$HOME/.android/debug.keystore"               --ks-pass pass:android               --ks-key-alias androiddebugkey               --key-pass pass:android               --v1-signing-enabled true               --v2-signing-enabled true               "$APK"
+          done < <(find app/build/outputs/apk -type f -name '*-release*.apk')
           APK="$(find app/build/outputs/apk -type f -name '*-release*.apk' | head -n 1)"
           test -n "$APK"
           "$APKSIGNER" verify --verbose "$APK" | tee /tmp/apksigner.txt
