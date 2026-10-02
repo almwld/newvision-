@@ -37,10 +37,12 @@ void main() {
     await tester.pump(const Duration(milliseconds: 50));
 
     expect(provider.ready, isFalse);
-    final disabledButtons = find.byWidgetPredicate(
-      (widget) => widget is FilledButton && widget.onPressed == null,
+    final trackingAction = find.byKey(const ValueKey('tracking-action'));
+    expect(trackingAction, findsOneWidget);
+    expect(
+      tester.widget<FilledButton>(trackingAction).onPressed,
+      isNull,
     );
-    expect(disabledButtons, findsOneWidget);
 
     provider.dispose();
   });

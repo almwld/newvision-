@@ -57,7 +57,15 @@ class _PermissionsPageState extends State<PermissionsPage> {
               )),
             ],
             const SizedBox(height: 18),
-            FilledButton.icon(onPressed: p.ready ? () => context.go('/tracking') : null, icon: const Icon(Icons.visibility_rounded), label: const Padding(padding: EdgeInsets.symmetric(vertical: 13), child: Text('متابعة إلى التتبع'))),
+            FilledButton.icon(
+              key: const ValueKey('tracking-action'),
+              onPressed: p.ready ? () => context.go('/tracking') : null,
+              icon: const Icon(Icons.visibility_rounded),
+              label: const Padding(
+                padding: EdgeInsets.symmetric(vertical: 13),
+                child: Text('متابعة إلى التتبع'),
+              ),
+            ),
             const SizedBox(height: 10),
             OutlinedButton.icon(onPressed: () => context.push('/calibration'), icon: const Icon(Icons.tune_rounded), label: const Text('الانتقال إلى المعايرة')),
             const SizedBox(height: 14),
