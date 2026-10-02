@@ -11,8 +11,6 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v5
-      - name: Fetch and verify MediaPipe model
-        run: bash scripts/fetch_face_landmarker.sh
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.22.0'
@@ -96,7 +94,7 @@ jobs:
       - name: Build split release APKs
         working-directory: android
         run: gradle --no-daemon :app:assembleRelease
-      - name: Verify release APK outputs and L2CS model packaging
+      - name: Verify release APK outputs and model packaging
         working-directory: android
         run: |
           set -euo pipefail
@@ -105,6 +103,8 @@ jobs:
           test -f "$APK"
           echo "arm64 APK size: $(stat -c%s "$APK") bytes"
           unzip -l "$APK" | grep -E 'gaze_fp16\.tflite|face_landmarker\.task'
+          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -path '*/apksigner' -type f | sort -V | tail -n 1)"
+          "$APKSIGNER" verify --verbose "$APK"
       - name: Upload arm64-v8a
         uses: actions/upload-artifact@v5
         with:
