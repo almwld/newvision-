@@ -49,11 +49,13 @@ class PermissionProvider extends ChangeNotifier with WidgetsBindingObserver {
     notifyListeners();
     try {
       await permissions.Permission.camera.request();
+      camera = await permissions.Permission.camera.isGranted;
     } catch (e) {
       error = e.toString();
+    } finally {
+      loading = false;
+      notifyListeners();
     }
-    loading = false;
-    await refresh();
   }
 
   Future<void> requestOverlay() async {
@@ -63,11 +65,13 @@ class PermissionProvider extends ChangeNotifier with WidgetsBindingObserver {
     notifyListeners();
     try {
       await _platform.requestOverlayPermission();
+      overlay = await _platform.isOverlayGranted();
     } catch (e) {
       error = e.toString();
+    } finally {
+      loading = false;
+      notifyListeners();
     }
-    loading = false;
-    await refresh();
   }
 
   Future<void> requestAccessibility() async {
@@ -77,11 +81,13 @@ class PermissionProvider extends ChangeNotifier with WidgetsBindingObserver {
     notifyListeners();
     try {
       await _platform.requestAccessibilitySettings();
+      accessibility = await _platform.isAccessibilityEnabled();
     } catch (e) {
       error = e.toString();
+    } finally {
+      loading = false;
+      notifyListeners();
     }
-    loading = false;
-    await refresh();
   }
 
   Future<void> openAppSettings() async {

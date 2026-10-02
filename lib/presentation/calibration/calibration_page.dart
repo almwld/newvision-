@@ -72,8 +72,9 @@ class _CalibrationPageState extends State<CalibrationPage> {
         setState(()=>_saving=true);
         try {
           await _platform.fitCalibration(_samples);
+          await _platform.stopCamera();
           if(!mounted) return;
-          setState(() { _saving=false; _running=false; _index=-1; });
+          setState(() { _saving=false; _running=false; _index=-1; _liveGaze=null; });
           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('تم حفظ المعايرة بنجاح.')));
         } catch(error) {
           if(mounted) setState(() { _saving=false; _running=false; _error='فشل حفظ نموذج المعايرة: $error'; });

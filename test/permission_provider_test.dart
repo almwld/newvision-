@@ -4,12 +4,25 @@ import 'package:eye_control/presentation/providers/permission_provider.dart';
 
 class FakeEyeControlPlatform extends EyeControlPlatform {
   FakeEyeControlPlatform({this.overlay = true, this.accessibility = true});
+
   bool overlay;
   bool accessibility;
-  @override Future<bool> isOverlayGranted() async => overlay;
-  @override Future<bool> isAccessibilityEnabled() async => accessibility;
-  @override Future<void> requestOverlayPermission() async { overlay = true; }
-  @override Future<void> requestAccessibilitySettings() async { accessibility = true; }
+
+  @override
+  Future<bool> isOverlayGranted() async => overlay;
+
+  @override
+  Future<bool> isAccessibilityEnabled() async => accessibility;
+
+  @override
+  Future<void> requestOverlayPermission() async {
+    overlay = true;
+  }
+
+  @override
+  Future<void> requestAccessibilitySettings() async {
+    accessibility = true;
+  }
 }
 
 void main() {
@@ -32,16 +45,11 @@ void main() {
     final p = PermissionProvider(platform: f);
     p.camera = true;
 
-    // Settle any lifecycle refresh scheduled by the test binding before
-    // exercising the request sequence. This keeps the provider deterministic.
-    await p.refresh();
-
     await p.requestOverlay();
-    expect(f.overlay, isTrue);
     expect(p.overlay, isTrue);
+    expect(p.accessibility, isFalse);
 
     await p.requestAccessibility();
-    expect(f.accessibility, isTrue);
     expect(p.accessibility, isTrue);
     expect(p.ready, isTrue);
     p.dispose();
