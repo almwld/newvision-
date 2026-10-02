@@ -110,6 +110,15 @@ jobs:
         working-directory: android
         run: |
           set -euo pipefail
+          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -path '*/apksigner' -type f | sort -V | tail -n 1)"
+          APK="$(find app/build/outputs/apk -type f -name '*-release*.apk' | head -n 1)"
+          test -n "$APK"
+          "$APKSIGNER" verify --verbose "$APK" | tee /tmp/apksigner.txt
+          grep -q 'Verified using v1 scheme (JAR signing): true' /tmp/apksigner.txt
+          grep -q 'Verified using v2 scheme (APK Signature Scheme v2): true' /tmp/apksigner.txt
+          test -f app/src/main/assets/gaze_fp16.tflite
+
+          set -euo pipefail
           find app/build/outputs/apk -type f -name '*.apk' -print
           APK="app/build/outputs/apk/release/app-arm64-v8a-release.apk"
           test -f "$APK"
