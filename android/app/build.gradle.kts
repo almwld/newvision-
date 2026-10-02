@@ -39,10 +39,7 @@ android {
             } else {
                 // CI/installable fallback only; production releases must provide
                 // the protected release keystore through GitHub Actions secrets.
-                storeFile = file("${System.getProperty("java.home")}/lib/security/cacerts")
-                storePassword = "changeit"
-                keyAlias = "androiddebugkey"
-                keyPassword = "android"
+                initWith(signingConfigs.getByName("debug"))
             }
             enableV1Signing = true
             enableV2Signing = true
