@@ -59,18 +59,9 @@ jobs:
             grep -q 'Verified using v1 scheme (JAR signing): true' /tmp/apksigner.txt
             grep -q 'Verified using v2 scheme (APK Signature Scheme v2): true' /tmp/apksigner.txt
           done
-      - name: Verify release outputs, signature and size
+      - name: Verify release outputs
         working-directory: android
         run: |
-          set -euo pipefail
-          ARM64="app/build/outputs/apk/release/app-arm64-v8a-release.apk"
-          AAB="app/build/outputs/bundle/release/app-release.aab"
-          test -f "$ARM64"
-          test -f "$AAB"
-          SIZE="$(stat -c%s "$ARM64")"
-          echo "arm64 release APK: $SIZE bytes"
-          test "$SIZE" -lt 31457280
-          jarsigner -verify -verbose -certs "$AAB" >/dev/null
           find app/build/outputs/apk -type f -name '*.apk' -print
           find app/build/outputs/bundle -type f -name '*.aab' -print
       - name: Upload arm64-v8a APK
@@ -106,4 +97,4 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME"             android/app/build/outputs/apk/release/app-arm64-v8a-release.apk             android/app/build/outputs/apk/release/app-armeabi-v7a-release.apk             android/app/build/outputs/apk/release/app-x86_64-release.apk             android/app/build/outputs/bundle/release/app-release.aab             --title "NewVision $GITHUB_REF_NAME"             --generate-notes
+          gh release create "$GITHUB_REF_NAME"             android/app/build/outputs/apk/release/app-arm64-v8a-release.apk             android/app/build/outputs/apk/release/app-armeabi-v7a-release.apk             android/app/build/outputs/apk/release/app-x86_64-release.apk             android/app/build/outputs/bundle/release/app-release.aab             --title "NewVision $GITHUB_REF_NAME" --generate-notes

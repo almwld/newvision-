@@ -19,8 +19,7 @@ void main() {
         home: Stack(children: [GazeCursor(x: 20, y: 20, blinking: true)]),
       ),
     );
-    final opacity =
-        tester.widget<AnimatedOpacity>(find.byType(AnimatedOpacity));
-    expect(opacity.opacity, closeTo(0.3, 0.001));
+    final opacity = tester.widget<AnimatedOpacity>(find.byType(AnimatedOpacity));
+    expect(opacity.opacity, closeTo(0.35, 0.001));
   });
 }

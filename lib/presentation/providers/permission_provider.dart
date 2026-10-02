@@ -1,24 +1,15 @@
 import 'package:flutter/widgets.dart';
-import 'package:permission_handler/permission_handler.dart' as permissions;
+import 'package:permission_handler/permission_handler.dart';
 import '../../platform/eye_control_platform.dart';
 
 class PermissionProvider extends ChangeNotifier with WidgetsBindingObserver {
-  PermissionProvider({EyeControlPlatform? platform})
-      : _platform = platform ?? EyeControlPlatform() {
+  PermissionProvider({EyeControlPlatform? platform}) : _platform = platform ?? EyeControlPlatform() {
     WidgetsBinding.instance.addObserver(this);
   }
-
   final EyeControlPlatform _platform;
-  bool camera = false;
-  bool overlay = false;
-  bool accessibility = false;
-  bool loading = false;
+  bool camera = false, overlay = false, accessibility = false, loading = false;
   String? error;
-
   bool get ready => camera && overlay && accessibility;
-  int get completedCount => [camera, overlay, accessibility].where((v) => v).length;
-  bool get canRequestOverlay => camera;
-  bool get canRequestAccessibility => camera && overlay;
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
@@ -26,81 +17,19 @@ class PermissionProvider extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   Future<void> refresh() async {
-    if (loading) return;
-    loading = true;
-    error = null;
-    notifyListeners();
+    loading = true; notifyListeners();
     try {
-      camera = await permissions.Permission.camera.isGranted;
+      camera = await Permission.camera.isGranted;
       overlay = await _platform.isOverlayGranted();
       accessibility = await _platform.isAccessibilityEnabled();
-    } catch (e) {
-      error = e.toString();
-    } finally {
-      loading = false;
-      notifyListeners();
-    }
+      error = null;
+    } catch (e) { error = e.toString(); }
+    loading = false; notifyListeners();
   }
-
-  Future<void> requestCamera() async {
-    if (loading) return;
-    loading = true;
-    error = null;
-    notifyListeners();
-    try {
-      await permissions.Permission.camera.request();
-      camera = await permissions.Permission.camera.isGranted;
-    } catch (e) {
-      error = e.toString();
-    } finally {
-      loading = false;
-      notifyListeners();
-    }
-  }
-
-  Future<void> requestOverlay() async {
-    if (loading || !camera) return;
-    loading = true;
-    error = null;
-    notifyListeners();
-    try {
-      await _platform.requestOverlayPermission();
-      overlay = await _platform.isOverlayGranted();
-    } catch (e) {
-      error = e.toString();
-    } finally {
-      loading = false;
-      notifyListeners();
-    }
-  }
-
-  Future<void> requestAccessibility() async {
-    if (loading || !camera || !overlay) return;
-    loading = true;
-    error = null;
-    notifyListeners();
-    try {
-      await _platform.requestAccessibilitySettings();
-      accessibility = await _platform.isAccessibilityEnabled();
-    } catch (e) {
-      error = e.toString();
-    } finally {
-      loading = false;
-      notifyListeners();
-    }
-  }
-
-  Future<void> openAppSettings() async {
-    final opened = await permissions.openAppSettings();
-    if (!opened) {
-      error = 'تعذر فتح إعدادات التطبيق.';
-      notifyListeners();
-    }
-  }
+  Future<void> requestCamera() async { await Permission.camera.request(); await refresh(); }
+  Future<void> requestOverlay() async { await _platform.requestOverlayPermission(); await refresh(); }
+  Future<void> requestAccessibility() async { await _platform.requestAccessibilitySettings(); await refresh(); }
 
   @override
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    super.dispose();
-  }
+  void dispose() { WidgetsBinding.instance.removeObserver(this); super.dispose(); }
 }
