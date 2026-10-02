@@ -19,8 +19,8 @@ class HomePage extends StatelessWidget {
     _ActionCard(icon:Icons.center_focus_strong_rounded,title:'المعايرة',subtitle:calibration.ready?'المعايرة محفوظة':'اضبط نقاط النظر التسع',onTap:()=>context.push('/calibration')),
     _ActionCard(icon:Icons.visibility_outlined,title:'تتبع النظر',subtitle:'راقب الإحداثيات والثقة وحالة الرمش',onTap:ready?()=>context.push('/tracking'):()=>context.push('/permissions')),
     const SizedBox(height:8),Text('المعالجة تتم محلياً على الجهاز ولا يتم حفظ إطارات الكاميرا.',textAlign:TextAlign.center,style:Theme.of(context).textTheme.bodySmall?.copyWith(color:s.onSurfaceVariant))
-   ]))));
- }
+   ]));
+  }
 }
 class _ActionCard extends StatelessWidget{
  const _ActionCard({required this.icon,required this.title,required this.subtitle,required this.onTap});

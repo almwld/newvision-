@@ -30,24 +30,29 @@ android {
         !releaseKeyAlias.isNullOrBlank() &&
         !releaseKeyPassword.isNullOrBlank()
     signingConfigs {
-        if (hasReleaseSigning) {
-            create("release") {
+        create("release") {
+            if (hasReleaseSigning) {
                 storeFile = file(releaseStorePath!!)
                 storePassword = releaseStorePassword
                 keyAlias = releaseKeyAlias
                 keyPassword = releaseKeyPassword
-                enableV1Signing = true
-                enableV2Signing = true
+            } else {
+                // CI/installable fallback only; production releases must provide
+                // the protected release keystore through GitHub Actions secrets.
+                storeFile = file("${System.getProperty("java.home")}/lib/security/cacerts")
+                storePassword = "changeit"
+                keyAlias = "androiddebugkey"
+                keyPassword = "android"
             }
+            enableV1Signing = true
+            enableV2Signing = true
         }
     }
     buildTypes {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
-            if (hasReleaseSigning) {
-                signingConfig = signingConfigs.getByName("release")
-            }
+            signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
