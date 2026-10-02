@@ -96,9 +96,15 @@ jobs:
       - name: Build split release APKs
         working-directory: android
         run: gradle --no-daemon :app:assembleRelease
-      - name: Verify release APK outputs
+      - name: Verify release APK outputs and L2CS model packaging
         working-directory: android
-        run: find app/build/outputs/apk -type f -name '*.apk' -print
+        run: |
+          set -euo pipefail
+          find app/build/outputs/apk -type f -name '*.apk' -print
+          APK="app/build/outputs/apk/release/app-arm64-v8a-release.apk"
+          test -f "$APK"
+          echo "arm64 APK size: $(stat -c%s "$APK") bytes"
+          unzip -l "$APK" | grep -E 'gaze_fp16\.tflite|face_landmarker\.task'
       - name: Upload arm64-v8a
         uses: actions/upload-artifact@v5
         with:
