@@ -29,7 +29,7 @@ void main() {
   });
   testWidgets('setting slider emits changed value', (tester) async {
     double? value;
-    await tester.pumpWidget(MaterialApp(home: SettingSlider(value: 900, label: 'Dwell', onChanged: (v) => value = v)));
+    await tester.pumpWidget(MaterialApp(home: Scaffold(body: SettingSlider(value: 900, label: 'Dwell', onChanged: (v) => value = v))));
     await tester.tapAt(tester.getCenter(find.byType(Slider)));
     expect(value, isNotNull);
   });

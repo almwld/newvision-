@@ -17,7 +17,7 @@ void main() {
   test('publishes latest screen point', () async {
     final bridge = FakeBridge();
     final provider = TrackingProvider(bridge: bridge);
-    provider.start();
+    await provider.start();
     bridge.c.add({'xPx': 1, 'yPx': 2, 'confidence': .8, 'isBlinking': false, 'timestampNs': 7});
     await Future<void>.delayed(Duration.zero);
     expect(provider.latest?.xPx, 1);
