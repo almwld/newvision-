@@ -37,7 +37,12 @@ void main() {
     await tester.pump(const Duration(milliseconds: 50));
 
     expect(provider.ready, isFalse);
-    expect(find.text('متابعة إلى التتبع'), findsOneWidget);
+    final trackingButton = find.byType(FilledButton);
+    expect(trackingButton, findsOneWidget);
+    expect(
+      tester.widget<FilledButton>(trackingButton).onPressed,
+      isNull,
+    );
 
     provider.dispose();
   });
