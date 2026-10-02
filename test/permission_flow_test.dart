@@ -37,6 +37,8 @@ void main() {
     await tester.pump(const Duration(milliseconds: 50));
 
     expect(provider.ready, isFalse);
+    await tester.drag(find.byType(ListView), const Offset(0, -700));
+    await tester.pump();
     final trackingAction = find.byKey(const ValueKey('tracking-action'));
     expect(trackingAction, findsOneWidget);
     expect(
