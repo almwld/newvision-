@@ -1,9 +1,32 @@
+# NewVision release R8 rules.
+
 -keep class com.google.mediapipe.** { *; }
--keep class com.eyecontrol.** { *; }
+-keep class com.google.ai.edge.litert.** { *; }
+-keep class org.tensorflow.** { *; }
 
-# MediaPipe profiling/template proto references are optional at runtime.
--dontwarn com.google.mediapipe.proto.**
+-keep class com.eyecontrol.MainActivity { *; }
+-keep class com.eyecontrol.EyeControlApplication { *; }
+-keep class com.eyecontrol.data.vision.** { *; }
+-keep class com.eyecontrol.data.camera.** { *; }
+-keep class com.eyecontrol.domain.model.** { *; }
 
-# Java annotation-processing APIs are compile-time only and are not needed at runtime.
+-keepclassmembers enum * {
+    public static **[] values();
+    public static ** valueOf(java.lang.String);
+}
+
+-keepattributes *Annotation*, InnerClasses, Signature, SourceFile, LineNumberTable
+-keep class kotlin.Metadata { *; }
+
+-dontwarn com.google.mediapipe.**
+-dontwarn com.google.ai.edge.litert.**
+-dontwarn org.tensorflow.**
 -dontwarn javax.annotation.processing.**
 -dontwarn javax.lang.model.**
+
+-allowaccessmodification
+-optimizations !code/simplification/arithmetic
+-assumenosideeffects class android.util.Log {
+    public static *** d(...);
+    public static *** v(...);
+}
