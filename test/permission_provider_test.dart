@@ -14,6 +14,7 @@ class FakeEyeControlPlatform extends EyeControlPlatform {
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
   test('readiness requires all three permissions', () async {
     final p = PermissionProvider(platform: FakeEyeControlPlatform());
     p.camera = true;
@@ -25,13 +26,22 @@ void main() {
     expect(p.ready, isTrue);
     p.dispose();
   });
+
   test('overlay and accessibility requests update provider state', () async {
     final f = FakeEyeControlPlatform(overlay: false, accessibility: false);
     final p = PermissionProvider(platform: f);
     p.camera = true;
+
+    // Settle any lifecycle refresh scheduled by the test binding before
+    // exercising the request sequence. This keeps the provider deterministic.
+    await p.refresh();
+
     await p.requestOverlay();
-    await p.requestAccessibility();
+    expect(f.overlay, isTrue);
     expect(p.overlay, isTrue);
+
+    await p.requestAccessibility();
+    expect(f.accessibility, isTrue);
     expect(p.accessibility, isTrue);
     expect(p.ready, isTrue);
     p.dispose();
