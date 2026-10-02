@@ -15,6 +15,7 @@ import com.google.mediapipe.tasks.core.BaseOptions
 import com.google.mediapipe.tasks.vision.core.RunningMode
 import com.google.mediapipe.tasks.vision.facelandmarker.FaceLandmarker
 import com.google.mediapipe.tasks.vision.facelandmarker.FaceLandmarkerResult
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.hypot
 import kotlin.math.min
@@ -27,6 +28,16 @@ class FaceLandmarkerAnalyzer(
     private val landmarker: FaceLandmarker
     private val blinkDetector = BlinkDetector()
     private val irisNormalizer = IrisNormalizer()
+    private var gazeEstimator: GazeEstimator? = null
+    private val pendingBitmaps = ConcurrentHashMap<Long, Bitmap>()
+
+    fun setGazeEstimator(estimator: GazeEstimator?) {
+        gazeEstimator = estimator
+        android.util.Log.d(
+            "FaceLandmarker",
+            "L2CS estimator " + if (estimator != null) "enabled" else "disabled",
+        )
+    }
 
     init {
         landmarker = tryLoadModel(context, "assets/models/face_landmarker.task")
@@ -89,7 +100,19 @@ class FaceLandmarkerAnalyzer(
                 bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true,
             )
             if (transformed !== bitmap) bitmap.recycle()
-            landmarker.detectAsync(BitmapImageBuilder(transformed).build(), timestamp)
+            pendingBitmaps[timestamp] = transformed
+            if (pendingBitmaps.size > 4) {
+                val oldest = pendingBitmaps.keys.minOrNull()
+                if (oldest != null && oldest != timestamp) {
+                    pendingBitmaps.remove(oldest)?.recycle()
+                }
+            }
+            try {
+                landmarker.detectAsync(BitmapImageBuilder(transformed).build(), timestamp)
+            } catch (error: Exception) {
+                pendingBitmaps.remove(timestamp)?.recycle()
+                throw error
+            }
         } catch (error: Exception) {
             android.util.Log.e("FaceLandmarker", "Frame analysis failed: ${error.message}", error)
             AppLogger.e("Frame analysis failed", error)
@@ -121,8 +144,37 @@ class FaceLandmarkerAnalyzer(
         val leftEye = eyeContour(landmarks, intArrayOf(362, 385, 387, 263, 373, 380))
         val blinking = blinkDetector.update(leftEye, rightEye)
 
-        val rawX = ((rightNormalized.first + leftNormalized.first) * 0.5f).coerceIn(0f, 1f)
-        val rawY = ((rightNormalized.second + leftNormalized.second) * 0.5f).coerceIn(0f, 1f)
+        val fallbackX = ((rightNormalized.first + leftNormalized.first) * 0.5f).coerceIn(0f, 1f)
+        val fallbackY = ((rightNormalized.second + leftNormalized.second) * 0.5f).coerceIn(0f, 1f)
+
+        val frameBitmap = pendingBitmaps.remove(result.timestampMs())
+        var rawX = fallbackX
+        var rawY = fallbackY
+        if (frameBitmap != null) {
+            try {
+                val faceCrop = FaceCropper.cropFace(frameBitmap, landmarks)
+                if (faceCrop != null) {
+                    gazeEstimator?.estimate(faceCrop)?.let { gaze ->
+                        val yaw = gaze.first
+                        val pitch = gaze.second
+                        rawX = ((yaw + 180f) / 360f).coerceIn(0f, 1f)
+                        rawY = ((pitch + 180f) / 360f).coerceIn(0f, 1f)
+                        android.util.Log.d(
+                            "FaceLandmarker",
+                            "L2CS gaze yaw=" + yaw + " pitch=" + pitch +
+                                " -> rawX=" + rawX + " rawY=" + rawY,
+                        )
+                    }
+                    if (faceCrop !== frameBitmap) faceCrop.recycle()
+                }
+            } catch (error: Exception) {
+                android.util.Log.e("FaceLandmarker", "L2CS integration failed; using iris fallback", error)
+                AppLogger.e("L2CS integration failed", error)
+            } finally {
+                frameBitmap.recycle()
+            }
+        }
+
         val faceWidth = (landmarks.maxOf { it.x() } - landmarks.minOf { it.x() }).coerceAtLeast(0f)
         val faceHeight = (landmarks.maxOf { it.y() } - landmarks.minOf { it.y() }).coerceAtLeast(0f)
         val diagonal = hypot(faceWidth.toDouble(), faceHeight.toDouble()).toFloat()
@@ -164,6 +216,10 @@ class FaceLandmarkerAnalyzer(
     override fun close() {
         if (closed.compareAndSet(false, true)) {
             blinkDetector.reset()
+            pendingBitmaps.values.forEach { bitmap ->
+                if (!bitmap.isRecycled) bitmap.recycle()
+            }
+            pendingBitmaps.clear()
             landmarker.close()
         }
     }
