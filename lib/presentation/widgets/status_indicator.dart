@@ -8,17 +8,20 @@ class StatusIndicator extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+    return DecoratedBox(
       decoration: BoxDecoration(
-        color: (active ? scheme.primary : scheme.surfaceContainerHighest).withOpacity(.16),
+        color: active ? scheme.primaryContainer.withOpacity(.72) : scheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: scheme.outlineVariant.withOpacity(.55)),
       ),
-      child: Row(mainAxisSize: MainAxisSize.min, children: [
-        Icon(Icons.circle, size: 8, color: active ? scheme.primary : scheme.outline),
-        const SizedBox(width: 7),
-        Text(label ?? (active ? 'نشط' : 'غير نشط')),
-      ]),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          Container(width: 8, height: 8, decoration: BoxDecoration(color: active ? scheme.primary : scheme.outline, shape: BoxShape.circle)),
+          const SizedBox(width: 7),
+          Text(label ?? (active ? 'نشط' : 'غير نشط'), style: Theme.of(context).textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w800)),
+        ]),
+      ),
     );
   }
 }
