@@ -10,12 +10,12 @@ void main() {
   testWidgets('status card exposes ready state', (tester) async {
     await tester.pumpWidget(const MaterialApp(home: StatusCard(ready: true, title: 'Ready', subtitle: 'Tracking')));
     expect(find.text('Ready'), findsOneWidget);
-    expect(find.byIcon(Icons.check_circle), findsOneWidget);
+    expect(find.byIcon(Icons.check_rounded), findsOneWidget);
   });
   testWidgets('permission tile exposes action when not granted', (tester) async {
     var pressed = false;
     await tester.pumpWidget(MaterialApp(home: PermissionTile(icon: Icons.camera_alt, title: 'Camera', subtitle: 'Required', granted: false, onPressed: () => pressed = true)));
-    await tester.tap(find.text('Allow'));
+    await tester.tap(find.text('تفعيل'));
     expect(pressed, isTrue);
   });
   testWidgets('empty state renders copy', (tester) async {
@@ -30,7 +30,7 @@ void main() {
   testWidgets('setting slider emits changed value', (tester) async {
     double? value;
     await tester.pumpWidget(MaterialApp(home: SettingSlider(value: 900, label: 'Dwell', onChanged: (v) => value = v)));
-    await tester.drag(find.byType(Slider), const Offset(80, 0));
+    await tester.tapAt(tester.getCenter(find.byType(Slider)));
     expect(value, isNotNull);
   });
   testWidgets('gaze cursor builds in blinking state', (tester) async {

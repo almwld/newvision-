@@ -44,14 +44,12 @@ class _CalibrationPageState extends State<CalibrationPage> {
         final valid=confidence is num && confidence.toDouble()>=.35 &&
           gaze?['blinking']!=true && gaze?['leftIrisX'] is num && gaze?['leftIrisY'] is num &&
           gaze?['rightIrisX'] is num && gaze?['rightIrisY'] is num;
-        if (valid) {
-          _current.add({
+        if(valid) _current.add({
           'leftIrisX':(gaze!['leftIrisX'] as num).toDouble(),
           'leftIrisY':(gaze['leftIrisY'] as num).toDouble(),
           'rightIrisX':(gaze['rightIrisX'] as num).toDouble(),
-          'rightIrisY': (gaze['rightIrisY'] as num).toDouble(),
-          });
-        }
+          'rightIrisY':(gaze['rightIrisY'] as num).toDouble(),
+        });
       } finally { _reading=false; }
       if(ticks<40) return; timer.cancel();
       if(!mounted || !_running) return;

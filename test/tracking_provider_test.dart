@@ -2,11 +2,13 @@ import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:eye_control/data/datasources/native_bridge.dart';
 import 'package:eye_control/presentation/providers/tracking_provider.dart';
+import 'package:eye_control/data/models/gaze_sample_model.dart';
 
 class FakeBridge extends NativeBridge {
   final StreamController<Map<String, dynamic>> c = StreamController<Map<String, dynamic>>.broadcast();
-  @override Stream<Map<String, dynamic>> get screenPoints => c.stream;
-  @override Future<void> stopCamera() async {}
+  @override Stream<GazeSampleModel> get gazeStream => c.stream.map(GazeSampleModel.fromMap);
+  @override Future<void> startTracking() async {}
+  @override Future<void> stopTracking() async {}
   Future<void> close() async => c.close();
 }
 
