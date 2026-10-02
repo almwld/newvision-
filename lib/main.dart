@@ -13,78 +13,73 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final settings = SettingsProvider();
   await settings.load();
-
-  runApp(
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider.value(value: settings),
-        ChangeNotifierProvider(create: (_) => PermissionProvider()..refresh()),
-        ChangeNotifierProvider(create: (_) => TrackingProvider()),
-        ChangeNotifierProvider(create: (_) => CalibrationProvider()..refresh()),
-        ChangeNotifierProvider(create: (_) => HomeViewModel()..initialize()),
-      ],
-      child: const EyeControlApp(),
-    ),
-  );
+  runApp(MultiProvider(providers: [
+    ChangeNotifierProvider.value(value: settings),
+    ChangeNotifierProvider(create: (_) => PermissionProvider()..refresh()),
+    ChangeNotifierProvider(create: (_) => TrackingProvider()),
+    ChangeNotifierProvider(create: (_) => CalibrationProvider()..refresh()),
+    ChangeNotifierProvider(create: (_) => HomeViewModel()..initialize()),
+  ], child: const EyeControlApp()));
 }
 
 class EyeControlApp extends StatelessWidget {
   const EyeControlApp({super.key});
-
   static const _teal = Color(0xFF0A8F83);
+
+  ThemeData _theme(Brightness brightness) {
+    final scheme = ColorScheme.fromSeed(
+      seedColor: _teal,
+      brightness: brightness,
+      surface: brightness == Brightness.light ? Colors.white : const Color(0xFF111D1E),
+    );
+    return ThemeData(
+      useMaterial3: true,
+      brightness: brightness,
+      colorScheme: scheme,
+      scaffoldBackgroundColor: brightness == Brightness.light ? const Color(0xFFF5F8F8) : const Color(0xFF0B1415),
+      visualDensity: VisualDensity.standard,
+      splashFactory: InkSparkle.splashFactory,
+      pageTransitionsTheme: const PageTransitionsTheme(builders: {
+        TargetPlatform.android: FadeForwardsPageTransitionsBuilder(),
+        TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+        TargetPlatform.linux: FadeForwardsPageTransitionsBuilder(),
+        TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
+        TargetPlatform.windows: FadeForwardsPageTransitionsBuilder(),
+      }),
+      appBarTheme: AppBarTheme(
+        centerTitle: false,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        backgroundColor: Colors.transparent,
+        surfaceTintColor: Colors.transparent,
+        titleTextStyle: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: scheme.onSurface),
+      ),
+      cardTheme: CardTheme(
+        elevation: 0,
+        margin: EdgeInsets.zero,
+        clipBehavior: Clip.antiAlias,
+        color: scheme.surface,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22), side: BorderSide(color: scheme.outlineVariant.withOpacity(.45))),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: scheme.surface,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: scheme.outlineVariant)),
+        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: scheme.outlineVariant)),
+        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: scheme.primary, width: 2)),
+      ),
+      listTileTheme: const ListTileThemeData(minVerticalPadding: 8, contentPadding: EdgeInsets.symmetric(horizontal: 16)),
+      filledButtonTheme: FilledButtonThemeData(style: FilledButton.styleFrom(minimumSize: const Size(48, 52), padding: const EdgeInsets.symmetric(horizontal: 20), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)))),
+      outlinedButtonTheme: OutlinedButtonThemeData(style: OutlinedButton.styleFrom(minimumSize: const Size(48, 52), padding: const EdgeInsets.symmetric(horizontal: 20), side: BorderSide(color: scheme.outlineVariant), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)))),
+      textButtonTheme: TextButtonThemeData(style: TextButton.styleFrom(minimumSize: const Size(48, 48), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)))),
+      iconButtonTheme: IconButtonThemeData(style: IconButton.styleFrom(minimumSize: const Size(48, 48), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)))),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final settings = context.watch<SettingsProvider>();
-    final light = ColorScheme.fromSeed(
-      seedColor: _teal,
-      brightness: Brightness.light,
-    );
-    final dark = ColorScheme.fromSeed(
-      seedColor: _teal,
-      brightness: Brightness.dark,
-    );
-
-    final base = ThemeData(
-      useMaterial3: true,
-      visualDensity: VisualDensity.standard,
-      scaffoldBackgroundColor: const Color(0xFFF6F8F9),
-      inputDecorationTheme: const InputDecorationTheme(
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.all(Radius.circular(16)),
-        ),
-      ),
-      cardTheme: const CardTheme(
-        elevation: 0,
-        margin: EdgeInsets.zero,
-        clipBehavior: Clip.antiAlias,
-      ),
-      appBarTheme: const AppBarTheme(
-        centerTitle: false,
-        scrolledUnderElevation: 0,
-        surfaceTintColor: Colors.transparent,
-      ),
-      filledButtonTheme: FilledButtonThemeData(
-        style: FilledButton.styleFrom(
-          minimumSize: const Size(48, 50),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-        ),
-      ),
-      outlinedButtonTheme: OutlinedButtonThemeData(
-        style: OutlinedButton.styleFrom(
-          minimumSize: const Size(48, 50),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-        ),
-      ),
-      iconButtonTheme: IconButtonThemeData(
-        style: IconButton.styleFrom(minimumSize: const Size(48, 48)),
-      ),
-    );
-
     return MaterialApp.router(
       title: 'NewVision',
       debugShowCheckedModeBanner: false,
@@ -95,12 +90,13 @@ class EyeControlApp extends StatelessWidget {
         GlobalCupertinoLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
       ],
-      theme: base.copyWith(colorScheme: light),
-      darkTheme: base.copyWith(
-        colorScheme: dark,
-        scaffoldBackgroundColor: const Color(0xFF0D1416),
-      ),
+      theme: _theme(Brightness.light),
+      darkTheme: _theme(Brightness.dark),
       themeMode: settings.darkMode ? ThemeMode.dark : ThemeMode.light,
+      builder: (context, child) => Directionality(
+        textDirection: settings.locale.languageCode == 'ar' ? TextDirection.rtl : TextDirection.ltr,
+        child: child ?? const SizedBox.shrink(),
+      ),
       routerConfig: appRouter,
     );
   }
