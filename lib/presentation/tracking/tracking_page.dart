@@ -38,7 +38,7 @@ class _TrackingPageState extends State<TrackingPage> {
               const SizedBox(height:5),Text(tracking.error??'المعالجة تتم محلياً على الجهاز',style:Theme.of(context).textTheme.bodySmall),
             ])),
             if(gaze!=null) GazeCursor(x:x,y:y,blinking:gaze.isBlinking),
-          ]))),
+          ])))),
           if(tracking.error!=null)...[const SizedBox(height:12),Card(
             color:Theme.of(context).colorScheme.errorContainer,
             child:Padding(padding:const EdgeInsets.all(14),child:Text(tracking.error!,style:TextStyle(color:Theme.of(context).colorScheme.onErrorContainer))),
