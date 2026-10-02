@@ -25,4 +25,29 @@ class NativeBridge {
 
   Future<void> startCamera() => _methodChannel.invokeMethod<void>('camera.start');
   Future<void> stopCamera() => _methodChannel.invokeMethod<void>('camera.stop');
+
+  Future<Map<String, dynamic>> getGazeZonesSettings() async {
+    final value = await _methodChannel.invokeMethod<dynamic>('settings.getGazeZones');
+    if (value is Map) return Map<String, dynamic>.from(value);
+    return <String, dynamic>{};
+  }
+
+  Future<Map<String, dynamic>> setGazeZonesSettings(
+    Map<String, dynamic> settings,
+  ) async {
+    final value = await _methodChannel.invokeMethod<dynamic>(
+      'settings.setGazeZones',
+      settings,
+    );
+    if (value is Map) return Map<String, dynamic>.from(value);
+    return settings;
+  }
+
+  Future<Map<String, dynamic>> resetGazeZonesSettings() async {
+    final value = await _methodChannel.invokeMethod<dynamic>(
+      'settings.resetGazeZones',
+    );
+    if (value is Map) return Map<String, dynamic>.from(value);
+    return <String, dynamic>{};
+  }
 }
