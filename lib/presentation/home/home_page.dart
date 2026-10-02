@@ -35,134 +35,26 @@ class HomePage extends StatelessWidget {
         },
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+          padding: const EdgeInsets.fromLTRB(20, 4, 20, 36),
           children: [
-            Container(
-              padding: const EdgeInsets.all(22),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    scheme.primary,
-                    Color.alphaBlend(scheme.primaryContainer, scheme.primary),
-                  ],
-                  begin: AlignmentDirectional.topStart,
-                  end: AlignmentDirectional.bottomEnd,
-                ),
-                borderRadius: BorderRadius.circular(28),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 64,
-                    height: 64,
-                    decoration: BoxDecoration(
-                      color: scheme.onPrimary.withOpacity(.14),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      ready ? Icons.check_rounded : Icons.visibility_rounded,
-                      color: scheme.onPrimary,
-                      size: 34,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          ready ? 'كل شيء جاهز' : 'تحكم أكثر سهولة',
-                          style: TextStyle(
-                            color: scheme.onPrimary,
-                            fontSize: 21,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                        const SizedBox(height: 5),
-                        Text(
-                          ready
-                              ? 'يمكنك بدء جلسة التتبع الآن.'
-                              : 'وجّه نظرك واترك NewVision يتولى الباقي.',
-                          style: TextStyle(
-                            color: scheme.onPrimary.withOpacity(.84),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
+            _HeroCard(ready: ready),
+            const SizedBox(height: 18),
             StatusCard(
               ready: ready,
               title: ready ? 'جاهز للتحكم بالنظر' : 'أكمل إعداد NewVision',
               subtitle: ready
-                  ? 'المعايرة والصلاحيات الأساسية جاهزة.'
-                  : 'فعّل الصلاحيات وأكمل المعايرة للحصول على تجربة مستقرة.',
+                  ? 'الصلاحيات والمعايرة جاهزتان. يمكنك بدء جلسة التتبع.'
+                  : 'فعّل الصلاحيات المطلوبة ثم نفّذ المعايرة للحصول على أفضل استقرار.',
             ),
-            const SizedBox(height: 18),
-            Text(
-              'الأدوات',
-              style: theme.textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.w800,
-              ),
-            ),
+            const SizedBox(height: 26),
+            Text('الوصول السريع', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900, letterSpacing: -.2)),
+            const SizedBox(height: 12),
+            _Action(icon: Icons.shield_outlined, title: 'الصلاحيات', subtitle: 'الكاميرا، العرض فوق التطبيقات وإمكانية الوصول', onTap: () => context.push('/permissions')),
+            _Action(icon: Icons.center_focus_strong_rounded, title: 'المعايرة', subtitle: calibration.ready ? 'معايرة شخصية محفوظة محلياً' : 'أنشئ معايرة من 9 نقاط', onTap: () => context.push('/calibration')),
+            _Action(icon: Icons.visibility_rounded, title: 'تتبع النظر', subtitle: 'مراقبة الإشارة والثقة لحظياً', onTap: () => context.push('/tracking')),
+            _Action(icon: Icons.tune_rounded, title: 'الإعدادات', subtitle: 'المظهر، اللغة ومدة التثبيت', onTap: () => context.push('/settings')),
             const SizedBox(height: 10),
-            _Action(
-              icon: Icons.shield_outlined,
-              title: 'الصلاحيات',
-              subtitle: 'الكاميرا، العرض وإمكانية الوصول',
-              onTap: () => context.push('/permissions'),
-            ),
-            _Action(
-              icon: Icons.center_focus_strong_rounded,
-              title: 'المعايرة',
-              subtitle: calibration.ready
-                  ? 'المعايرة محفوظة محلياً'
-                  : 'أنشئ معايرة شخصية جديدة',
-              onTap: () => context.push('/calibration'),
-            ),
-            _Action(
-              icon: Icons.visibility_rounded,
-              title: 'تتبع النظر',
-              subtitle: 'عرض الإشارة والثقة لحظياً',
-              onTap: () => context.push('/tracking'),
-            ),
-            _Action(
-              icon: Icons.settings_outlined,
-              title: 'الإعدادات',
-              subtitle: 'المظهر واللغة وزمن التثبيت',
-              onTap: () => context.push('/settings'),
-            ),
-            _Action(
-              icon: Icons.info_outline_rounded,
-              title: 'حول NewVision',
-              subtitle: 'الخصوصية والإصدار',
-              onTap: () => context.push('/about'),
-            ),
-            const SizedBox(height: 18),
-            Card(
-              color: scheme.primaryContainer.withOpacity(.65),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.lock_outline_rounded,
-                      color: scheme.onPrimaryContainer,
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        'المعالجة محلية على الجهاز. لا يتم رفع إطارات الكاميرا إلى خادم.',
-                        style: TextStyle(color: scheme.onPrimaryContainer),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+            _PrivacyCard(scheme: scheme),
           ],
         ),
       ),
@@ -170,14 +62,42 @@ class HomePage extends StatelessWidget {
   }
 }
 
-class _Action extends StatelessWidget {
-  const _Action({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.onTap,
-  });
+class _HeroCard extends StatelessWidget {
+  const _HeroCard({required this.ready});
+  final bool ready;
 
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
+        color: scheme.primary,
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: [BoxShadow(color: scheme.primary.withOpacity(.18), blurRadius: 28, offset: const Offset(0, 12))],
+      ),
+      child: Row(children: [
+        Container(
+          width: 62,
+          height: 62,
+          decoration: BoxDecoration(color: scheme.onPrimary.withOpacity(.14), borderRadius: BorderRadius.circular(20), border: Border.all(color: scheme.onPrimary.withOpacity(.16))),
+          child: Icon(ready ? Icons.check_rounded : Icons.visibility_rounded, color: scheme.onPrimary, size: 34),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(ready ? 'النظام جاهز' : 'تحكم أسهل بنظرك', style: TextStyle(color: scheme.onPrimary, fontSize: 22, height: 1.15, fontWeight: FontWeight.w900)),
+            const SizedBox(height: 8),
+            Text(ready ? 'ابدأ التتبع واستعمل نظرك كمؤشر تفاعل.' : 'إعداد بسيط، معالجة محلية، وتجربة مصممة للاستخدام اليومي.', style: TextStyle(color: scheme.onPrimary.withOpacity(.86), height: 1.45)),
+          ]),
+        ),
+      ]),
+    );
+  }
+}
+
+class _Action extends StatelessWidget {
+  const _Action({required this.icon, required this.title, required this.subtitle, required this.onTap});
   final IconData icon;
   final String title;
   final String subtitle;
@@ -185,51 +105,44 @@ class _Action extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-
+    final scheme = Theme.of(context).colorScheme;
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
       child: InkWell(
-        borderRadius: BorderRadius.circular(20),
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Row(
-            children: [
-              Container(
-                width: 46,
-                height: 46,
-                decoration: BoxDecoration(
-                  color: scheme.primaryContainer,
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Icon(icon, color: scheme.onPrimaryContainer),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const SizedBox(height: 3),
-                    Text(subtitle, style: theme.textTheme.bodySmall),
-                  ],
-                ),
-              ),
-              Icon(
-                Icons.arrow_forward_ios_rounded,
-                size: 16,
-                color: scheme.outline,
-              ),
-            ],
-          ),
+          padding: const EdgeInsets.all(15),
+          child: Row(children: [
+            Container(width: 48, height: 48, decoration: BoxDecoration(color: scheme.primaryContainer, borderRadius: BorderRadius.circular(15)), child: Icon(icon, color: scheme.onPrimaryContainer, size: 24)),
+            const SizedBox(width: 14),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(title, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
+              const SizedBox(height: 4),
+              Text(subtitle, maxLines: 2, overflow: TextOverflow.ellipsis, style: Theme.of(context).textTheme.bodySmall?.copyWith(height: 1.35)),
+            ])),
+            Icon(Directionality.of(context) == TextDirection.rtl ? Icons.arrow_back_ios_new_rounded : Icons.arrow_forward_ios_rounded, size: 16, color: scheme.outline),
+          ]),
         ),
+      ),
+    );
+  }
+}
+
+class _PrivacyCard extends StatelessWidget {
+  const _PrivacyCard({required this.scheme});
+  final ColorScheme scheme;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      color: scheme.surfaceContainerLow,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Icon(Icons.lock_outline_rounded, color: scheme.primary),
+          const SizedBox(width: 12),
+          Expanded(child: Text('الخصوصية أولاً: مسار تحليل النظر مصمم ليعمل محلياً على الجهاز، ولا يرفع إطارات الكاميرا إلى خادم.', style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.45))),
+        ]),
       ),
     );
   }
