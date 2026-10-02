@@ -3,10 +3,10 @@ package com.eyecontrol.data.settings
 import kotlin.math.max
 import kotlin.math.min
 
-sealed interface ZoneActivationResult {
-    data object None : ZoneActivationResult
-    data class Active(val progress: Float) : ZoneActivationResult
-    data object Activated : ZoneActivationResult
+sealed class ZoneActivationResult {
+    object None : ZoneActivationResult()
+    data class Active(val progress: Float) : ZoneActivationResult()
+    object Activated : ZoneActivationResult()
 }
 
 class ZoneActivationTracker(
