@@ -11,6 +11,8 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v5
+      - name: Fetch and verify MediaPipe model
+        run: bash scripts/fetch_face_landmarker.sh
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.22.0'
