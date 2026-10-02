@@ -36,6 +36,7 @@ import com.eyecontrol.service.TouchAccessibilityService
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.EventChannel
+import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.Job
@@ -290,7 +291,7 @@ class MainActivity : FlutterActivity() {
         "fastClickMs" to settings.fastClickMs,
     )
 
-    private fun settingsFromCall(call: MethodChannel.MethodCall): GazeZoneSettings {
+    private fun settingsFromCall(call: MethodCall): GazeZoneSettings {
         fun bool(name: String, fallback: Boolean) = call.argument<Boolean>(name) ?: fallback
         fun long(name: String, fallback: Long) = call.argument<Number>(name)?.toLong() ?: fallback
         fun edge(name: String, fallback: Float) = call.argument<Number>(name)?.toFloat() ?: fallback
