@@ -162,7 +162,7 @@ class MainActivity : FlutterActivity() {
                             stopService(Intent(this, com.eyecontrol.service.FloatingButtonService::class.java))
                             result.success(true)
                         }
-                        "floating.isRunning" -> result.success(com.eyecontrol.service.FloatingButtonService.isRunning)\n                        "floating.show" -> {\n                            if (!Settings.canDrawOverlays(this)) {\n                                startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")))\n                                result.success(false)\n                            } else {\n                                ContextCompat.startForegroundService(this, Intent(this, com.eyecontrol.service.FloatingButtonService::class.java))\n                                result.success(true)\n                            }\n                        }\n                        "floating.hide" -> {\n                            stopService(Intent(this, com.eyecontrol.service.FloatingButtonService::class.java))\n                            result.success(true)\n                        }\n                        "floating.isRunning" -> result.success(com.eyecontrol.service.FloatingButtonService.isRunning)
+                        "floating.isRunning" -> result.success(com.eyecontrol.service.FloatingButtonService.isRunning)
                         "accessibility.request" -> {
                             startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
                             result.success(null)
