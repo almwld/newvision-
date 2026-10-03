@@ -22,7 +22,9 @@ class FloatingButtonService : Service() {
     companion object {
         private const val TAG = "FloatingBtn"
         private const val CHANNEL_ID = "newvision_floating"
-        private const val NOTIF_ID = 1001\n        const val ACTION_TOGGLE = "com.eyecontrol.TOGGLE_TRACKING"\n        const val ACTION_EMERGENCY = "com.eyecontrol.EMERGENCY"
+        private const val NOTIF_ID = 1001
+        const val ACTION_TOGGLE = "com.eyecontrol.TOGGLE_TRACKING"
+        const val ACTION_EMERGENCY = "com.eyecontrol.EMERGENCY"
 
         @Volatile var isRunning = false
             private set
@@ -189,8 +191,4 @@ class FloatingButtonService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
 
-    companion object {
-        const val ACTION_TOGGLE = "com.eyecontrol.TOGGLE_TRACKING"
-        const val ACTION_EMERGENCY = "com.eyecontrol.EMERGENCY"
-    }
 }
