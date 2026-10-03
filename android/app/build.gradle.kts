@@ -29,6 +29,7 @@ android {
         !releaseStorePassword.isNullOrBlank() &&
         !releaseKeyAlias.isNullOrBlank() &&
         !releaseKeyPassword.isNullOrBlank()
+
     signingConfigs {
         create("release") {
             if (hasReleaseSigning) {
@@ -36,22 +37,19 @@ android {
                 storePassword = releaseStorePassword
                 keyAlias = releaseKeyAlias
                 keyPassword = releaseKeyPassword
-            } else {
-                // CI/installable fallback only; production releases must provide
-                // the protected release keystore through GitHub Actions secrets.
-                initWith(signingConfigs.getByName("debug"))
+                enableV1Signing = true
+                enableV2Signing = true
             }
-            enableV1Signing = true
-            enableV2Signing = true
         }
     }
+
     buildTypes {
         release {
-            // Keep the current release pipeline deterministic; R8 shrinking is
-            // enabled later with a verified rule set and size regression check.
             isMinifyEnabled = false
             isShrinkResources = false
-            signingConfig = signingConfigs.getByName("release")
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.getByName("release")
+            }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
