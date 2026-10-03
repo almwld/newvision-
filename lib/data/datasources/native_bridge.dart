@@ -26,6 +26,15 @@ class NativeBridge {
   Future<void> startCamera() => _methodChannel.invokeMethod<void>('camera.start');
   Future<void> stopCamera() => _methodChannel.invokeMethod<void>('camera.stop');
 
+  Future<bool> showFloatingButton() async =>
+      await _methodChannel.invokeMethod<bool>('floating.show') ?? false;
+
+  Future<void> hideFloatingButton() =>
+      _methodChannel.invokeMethod<void>('floating.hide');
+
+  Future<bool> isFloatingButtonRunning() async =>
+      await _methodChannel.invokeMethod<bool>('floating.isRunning') ?? false;
+
   Future<Map<String, dynamic>> getGazeZonesSettings() async {
     final value = await _methodChannel.invokeMethod<dynamic>('settings.getGazeZones');
     if (value is Map) return Map<String, dynamic>.from(value);
