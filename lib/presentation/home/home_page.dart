@@ -40,12 +40,8 @@ class HomePage extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(22),
                 decoration: BoxDecoration(
+                  color: scheme.primary,
                   borderRadius: BorderRadius.circular(26),
-                  gradient: LinearGradient(
-                    colors: [scheme.primary, scheme.primaryContainer],
-                    begin: Alignment.topRight,
-                    end: Alignment.bottomLeft,
-                  ),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -55,16 +51,16 @@ class HomePage extends StatelessWidget {
                     Text(
                       ready ? 'جاهز للتحكم بالنظر' : 'أكمل إعداد NewVision',
                       style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                            fontWeight: FontWeight.w900,
-                            color: scheme.onPrimary,
-                          ),
+                        fontWeight: FontWeight.w900,
+                        color: scheme.onPrimary,
+                      ),
                     ),
                     const SizedBox(height: 8),
                     Text(
                       ready
                           ? 'المعايرة والصلاحيات جاهزة. يمكنك بدء التتبع.'
                           : 'نجهّز الكاميرا والصلاحيات والمعايرة لتجربة مستقرة.',
-                      style: TextStyle(color: scheme.onPrimary.withOpacity(.88)),
+                      style: TextStyle(color: scheme.onPrimary.withOpacity(.9), height: 1.4),
                     ),
                   ],
                 ),
@@ -73,15 +69,13 @@ class HomePage extends StatelessWidget {
               StatusCard(
                 ready: ready,
                 title: ready ? 'النظام جاهز' : 'الإعداد غير مكتمل',
-                subtitle: ready
-                    ? 'كل المتطلبات الأساسية متوفرة.'
-                    : 'تحقق من الصلاحيات ثم أكمل المعايرة.',
+                subtitle: ready ? 'كل المتطلبات الأساسية متوفرة.' : 'تحقق من الصلاحيات ثم أكمل المعايرة.',
               ),
               const SizedBox(height: 8),
               _ActionCard(
                 icon: Icons.shield_outlined,
                 title: 'الصلاحيات',
-                subtitle: 'الكاميرا، العرض فوق التطبيقات وإمكانية الوصول',
+                subtitle: 'الكاميرا والعرض فوق التطبيقات وإمكانية الوصول',
                 onTap: () => context.push('/permissions'),
               ),
               _ActionCard(
@@ -93,18 +87,32 @@ class HomePage extends StatelessWidget {
               _ActionCard(
                 icon: Icons.visibility_outlined,
                 title: 'تتبع النظر',
-                subtitle: 'راقب الإحداثيات والثقة وحالة الرمش',
-                onTap: ready
-                    ? () => context.push('/tracking')
-                    : () => context.push('/permissions'),
+                subtitle: 'الإحداثيات والثقة وحالة الرمش',
+                onTap: ready ? () => context.push('/tracking') : () => context.push('/permissions'),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 10),
+              Row(children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => context.push('/about'),
+                    icon: const Icon(Icons.info_outline_rounded),
+                    label: const Text('حول التطبيق'),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: FilledButton.icon(
+                    onPressed: ready ? () => context.push('/tracking') : () => context.push('/permissions'),
+                    icon: const Icon(Icons.play_arrow_rounded),
+                    label: Text(ready ? 'بدء التتبع' : 'إكمال الإعداد'),
+                  ),
+                ),
+              ]),
+              const SizedBox(height: 18),
               Text(
                 'المعالجة تتم محلياً على الجهاز ولا يتم حفظ إطارات الكاميرا.',
                 textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: scheme.onSurfaceVariant,
-                    ),
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
               ),
             ],
           ),
@@ -115,13 +123,7 @@ class HomePage extends StatelessWidget {
 }
 
 class _ActionCard extends StatelessWidget {
-  const _ActionCard({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.onTap,
-  });
-
+  const _ActionCard({required this.icon, required this.title, required this.subtitle, required this.onTap});
   final IconData icon;
   final String title;
   final String subtitle;
@@ -132,38 +134,27 @@ class _ActionCard extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     return Card(
       child: InkWell(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(22),
         onTap: onTap,
         child: Padding(
           padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: scheme.primaryContainer,
-                  borderRadius: BorderRadius.circular(15),
-                ),
-                child: Icon(icon, color: scheme.onPrimaryContainer),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
-                    const SizedBox(height: 4),
-                    Text(
-                      subtitle,
-                      style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 13),
-                    ),
-                  ],
-                ),
-              ),
-              const Icon(Icons.chevron_right_rounded),
-            ],
-          ),
+          child: Row(children: [
+            Container(
+              width: 50, height: 50,
+              decoration: BoxDecoration(color: scheme.primaryContainer, borderRadius: BorderRadius.circular(16)),
+              child: Icon(icon, color: scheme.onPrimaryContainer),
+            ),
+            const SizedBox(width: 14),
+            Expanded(child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
+                const SizedBox(height: 4),
+                Text(subtitle, style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 13, height: 1.3)),
+              ],
+            )),
+            const Icon(Icons.chevron_left_rounded),
+          ]),
         ),
       ),
     );
