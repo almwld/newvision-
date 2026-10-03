@@ -105,5 +105,5 @@ class TrackingForegroundService : LifecycleService() {
         return Service.START_STICKY
     }
 
-    override fun onBind(intent: Intent): IBinder = super.onBind(intent)
+    override fun onBind(intent: Intent): IBinder? = super.onBind(intent)
 }
