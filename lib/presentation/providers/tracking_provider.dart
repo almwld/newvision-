@@ -10,19 +10,51 @@ class TrackingProvider extends ChangeNotifier {
   final NativeBridge _bridge;
   StreamSubscription<Map<String, dynamic>>? _subscription;
   GazeSampleModel? _latest;
+  bool _running = false;
+  bool _starting = false;
+  String? _error;
 
   GazeSampleModel? get latest => _latest;
+  bool get running => _running;
+  bool get starting => _starting;
+  String? get error => _error;
 
-  void start() {
-    _subscription ??= _bridge.screenPoints.listen((map) {
-      _latest = GazeSampleModel.fromMap(map);
+  Future<void> start() async {
+    if (_running || _starting) return;
+    _starting = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      await _bridge.startCamera();
+      await _subscription?.cancel();
+      _subscription = _bridge.screenPoints.listen((map) {
+        _latest = GazeSampleModel.fromMap(map);
+        notifyListeners();
+      });
+      _running = true;
+    } catch (error) {
+      _error = error.toString();
+      _running = false;
+    } finally {
+      _starting = false;
       notifyListeners();
-    });
+    }
   }
 
   Future<void> stop() async {
+    if (!_running && !_starting) return;
+    _starting = false;
+    try {
+      await _bridge.stopCamera();
+    } catch (error) {
+      _error = error.toString();
+    }
     await _subscription?.cancel();
     _subscription = null;
+    _running = false;
+    _latest = null;
+    notifyListeners();
   }
 
   @override
