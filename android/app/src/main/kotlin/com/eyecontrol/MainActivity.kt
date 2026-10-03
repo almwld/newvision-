@@ -19,7 +19,7 @@ import com.eyecontrol.core.constants.NativeConstants
 import com.eyecontrol.core.logging.AppLogger
 import com.eyecontrol.data.calibration.CalibrationFeatureSample
 import com.eyecontrol.data.calibration.CalibrationSample
-import com.eyecontrol.data.camera.CameraController
+import com.eyecontrol.data.camera.TrackingRuntime
 import com.eyecontrol.data.repository.NativeCalibrationRepository
 import com.eyecontrol.data.repository.NativeGazeRepository
 import com.eyecontrol.data.repository.NativeGazeRepositoryFactory
@@ -46,7 +46,6 @@ class MainActivity : FlutterActivity() {
     private lateinit var gazeRepository: NativeGazeRepository
     private lateinit var calibrationRepository: NativeCalibrationRepository
     private lateinit var repositoryFactory: NativeGazeRepositoryFactory
-    private lateinit var cameraController: CameraController
     private lateinit var dwellController: DwellController
     private lateinit var hapticFeedback: HapticFeedback
     private lateinit var settingsStorage: SettingsStorage
@@ -154,7 +153,7 @@ class MainActivity : FlutterActivity() {
                             }
                             result.success(null)
                         }
-                        "overlay.isGranted" -> result.success(Settings.canDrawOverlays(this))
+                        "overlay.isGranted" -> result.success(Settings.canDrawOverlays(this))\n                        "floating.show" -> {\n                            if (!Settings.canDrawOverlays(this)) {\n                                startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")))\n                                result.success(false)\n                            } else {\n                                ContextCompat.startForegroundService(this, Intent(this, com.eyecontrol.service.FloatingButtonService::class.java))\n                                result.success(true)\n                            }\n                        }\n                        "floating.hide" -> {\n                            stopService(Intent(this, com.eyecontrol.service.FloatingButtonService::class.java))\n                            result.success(true)\n                        }\n                        "floating.isRunning" -> result.success(com.eyecontrol.service.FloatingButtonService.isRunning)
                         "accessibility.request" -> {
                             startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
                             result.success(null)
