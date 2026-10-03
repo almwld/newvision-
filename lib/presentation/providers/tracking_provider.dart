@@ -26,14 +26,16 @@ class TrackingProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      await _bridge.startCamera();
       await _subscription?.cancel();
       _subscription = _bridge.screenPoints.listen((map) {
         _latest = GazeSampleModel.fromMap(map);
         notifyListeners();
       });
+      await _bridge.startCamera();
       _running = true;
     } catch (error) {
+      await _subscription?.cancel();
+      _subscription = null;
       _error = error.toString();
       _running = false;
     } finally {
