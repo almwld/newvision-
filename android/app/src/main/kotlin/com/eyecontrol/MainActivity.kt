@@ -11,7 +11,6 @@ import android.provider.Settings
 import android.view.accessibility.AccessibilityManager
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.eyecontrol.core.constants.DwellConfiguration
@@ -59,11 +58,8 @@ class MainActivity : FlutterActivity() {
         super.onCreate(savedInstanceState)
         repositoryFactory = NativeGazeRepositoryFactory(this)
         calibrationRepository = repositoryFactory.calibrationRepository()
-        gazeRepository = repositoryFactory.create(
-            screenWidth = resources.displayMetrics.widthPixels,
-            screenHeight = resources.displayMetrics.heightPixels,
-        )
-        cameraController = CameraController(this, ProcessLifecycleOwner.get(), gazeRepository)
+        TrackingRuntime.initialize(this)
+        gazeRepository = TrackingRuntime.repository
         hapticFeedback = HapticFeedback(this)
         settingsStorage = SettingsStorage(getSharedPreferences("newvision", MODE_PRIVATE))
         currentSettings = settingsStorage.load()
@@ -136,14 +132,13 @@ class MainActivity : FlutterActivity() {
                                 result.error("CAMERA_PERMISSION", "Camera permission is required.", null)
                             } else {
                                 cameraRequested = true
-                                startOverlayIfPermitted()
-                                cameraController.start()
+                                startTrackingService()
                                 result.success(null)
                             }
                         }
                         "camera.stop" -> {
                             cameraRequested = false
-                            cameraController.stop()
+                            stopTrackingService()
                             gazeRepository.reset()
                             result.success(null)
                         }
@@ -153,7 +148,21 @@ class MainActivity : FlutterActivity() {
                             }
                             result.success(null)
                         }
-                        "overlay.isGranted" -> result.success(Settings.canDrawOverlays(this))\n                        "floating.show" -> {\n                            if (!Settings.canDrawOverlays(this)) {\n                                startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")))\n                                result.success(false)\n                            } else {\n                                ContextCompat.startForegroundService(this, Intent(this, com.eyecontrol.service.FloatingButtonService::class.java))\n                                result.success(true)\n                            }\n                        }\n                        "floating.hide" -> {\n                            stopService(Intent(this, com.eyecontrol.service.FloatingButtonService::class.java))\n                            result.success(true)\n                        }\n                        "floating.isRunning" -> result.success(com.eyecontrol.service.FloatingButtonService.isRunning)
+                        "overlay.isGranted" -> result.success(Settings.canDrawOverlays(this))
+                        "floating.show" -> {
+                            if (!Settings.canDrawOverlays(this)) {
+                                startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")))
+                                result.success(false)
+                            } else {
+                                ContextCompat.startForegroundService(this, Intent(this, com.eyecontrol.service.FloatingButtonService::class.java))
+                                result.success(true)
+                            }
+                        }
+                        "floating.hide" -> {
+                            stopService(Intent(this, com.eyecontrol.service.FloatingButtonService::class.java))
+                            result.success(true)
+                        }
+                        "floating.isRunning" -> result.success(com.eyecontrol.service.FloatingButtonService.isRunning)\n                        "floating.show" -> {\n                            if (!Settings.canDrawOverlays(this)) {\n                                startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")))\n                                result.success(false)\n                            } else {\n                                ContextCompat.startForegroundService(this, Intent(this, com.eyecontrol.service.FloatingButtonService::class.java))\n                                result.success(true)\n                            }\n                        }\n                        "floating.hide" -> {\n                            stopService(Intent(this, com.eyecontrol.service.FloatingButtonService::class.java))\n                            result.success(true)\n                        }\n                        "floating.isRunning" -> result.success(com.eyecontrol.service.FloatingButtonService.isRunning)
                         "accessibility.request" -> {
                             startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
                             result.success(null)
@@ -320,8 +329,15 @@ class MainActivity : FlutterActivity() {
         AppLogger.i("Gaze zone " + zone.name + ": " + if (success) "activated" else "accessibility unavailable")
     }
 
-    private fun startOverlayIfPermitted() {
-        if (Settings.canDrawOverlays(this)) startService(Intent(this, OverlayCursorService::class.java))
+    private fun startTrackingService() {
+        ContextCompat.startForegroundService(
+            this,
+            Intent(this, com.eyecontrol.service.TrackingForegroundService::class.java),
+        )
+    }
+
+    private fun stopTrackingService() {
+        stopService(Intent(this, com.eyecontrol.service.TrackingForegroundService::class.java))
     }
 
     private fun performDwellTap(x: Float, y: Float) {
@@ -339,22 +355,19 @@ class MainActivity : FlutterActivity() {
     }
 
     override fun onPause() {
-        cameraController.stop()
-        stopService(Intent(this, OverlayCursorService::class.java))
+        // TrackingForegroundService owns the camera; Activity lifecycle must not stop it.
         super.onPause()
     }
 
     override fun onResume() {
         super.onResume()
-        if (cameraRequested) {
-            startOverlayIfPermitted()
-            cameraController.start()
+        if (cameraRequested && !com.eyecontrol.service.TrackingForegroundService.isRunning) {
+            startTrackingService()
         }
     }
 
     override fun onDestroy() {
         gazeEventJob?.cancel()
-        cameraController.close()
         super.onDestroy()
     }
 }
