@@ -51,5 +51,30 @@
         <service
             android:name=".service.OverlayCursorService"
             android:exported="false" />
+
+        <service
+            android:name=".service.TrackingForegroundService"
+            android:foregroundServiceType="camera"
+            android:exported="false"
+            android:stopWithTask="false" />
+
+        <service
+            android:name=".service.FloatingButtonService"
+            android:foregroundServiceType="specialUse"
+            android:exported="false"
+            android:stopWithTask="false">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="floating_eye_control" />
+        </service>
+
+        <receiver
+            android:name=".service.FloatingButtonReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.eyecontrol.TOGGLE_TRACKING" />
+                <action android:name="com.eyecontrol.EMERGENCY" />
+            </intent-filter>
+        </receiver>
     </application>
 </manifest>
