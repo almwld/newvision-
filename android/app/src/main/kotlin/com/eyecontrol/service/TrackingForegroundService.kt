@@ -10,20 +10,20 @@ import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import androidx.lifecycle.LifecycleService
+import androidx.lifecycle.lifecycleScope
 import com.eyecontrol.MainActivity
 import com.eyecontrol.R
 import com.eyecontrol.data.camera.CameraController
 import com.eyecontrol.data.camera.TrackingRuntime
-import com.eyecontrol.core.constants.DwellConfiguration
 import com.eyecontrol.core.constants.NativeConstants
 import com.eyecontrol.data.settings.GazeZoneDetector
-import com.eyecontrol.data.settings.GazeZoneSettings
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 import com.eyecontrol.data.settings.GazeZone
 import com.eyecontrol.data.settings.SettingsStorage
 import com.eyecontrol.data.settings.ZoneActivationResult
 import com.eyecontrol.data.settings.ZoneActivationTracker
 import com.eyecontrol.domain.usecase.DwellController
-import com.eyecontrol.service.TouchAccessibilityService
 
 /**
  * Owns the CameraX pipeline so tracking is independent from MainActivity.
