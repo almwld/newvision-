@@ -29,6 +29,7 @@ class FaceLandmarkerAnalyzer(
     private val landmarker: FaceLandmarker
     private val blinkDetector = BlinkDetector()
     private val irisNormalizer = IrisNormalizer()
+    private val l2cs = L2csInferenceEngine(context)
 
     init {
         val baseOptions = BaseOptions.builder()
@@ -104,6 +105,13 @@ class FaceLandmarkerAnalyzer(
         val diagonal = hypot(faceWidth.toDouble(), faceHeight.toDouble()).toFloat()
         val confidence = min(1f, diagonal * 1.5f).coerceIn(0.1f, 1f)
         val pupilDiameter = (irisDiameter(leftIris) + irisDiameter(rightIris)) * 0.5f
+        val minX = landmarks.minOf { it.x() }.coerceIn(0f, 1f) * image.width.toFloat()
+        val minY = landmarks.minOf { it.y() }.coerceIn(0f, 1f) * image.height.toFloat()
+        val maxX = landmarks.maxOf { it.x() }.coerceIn(0f, 1f) * image.width.toFloat()
+        val maxY = landmarks.maxOf { it.y() }.coerceIn(0f, 1f) * image.height.toFloat()
+        val l2csResult = runCatching { l2cs.infer(image.bitmap, minX, minY, maxX, maxY) }
+            .onFailure { AppLogger.e("L2CS inference failed", it) }
+            .getOrNull()
 
         repository.publish(
             GazeSample(
@@ -117,6 +125,9 @@ class FaceLandmarkerAnalyzer(
                 pupilDiameter = pupilDiameter,
                 eyeOpen = !blinking,
                 timestampNs = result.timestampMs() * 1_000_000L,
+                yawDegrees = l2csResult?.yawDegrees,
+                pitchDegrees = l2csResult?.pitchDegrees,
+                gazeConfidence = l2csResult?.confidence,
             ),
         )
     }
@@ -167,6 +178,7 @@ class FaceLandmarkerAnalyzer(
         if (closed.compareAndSet(false, true)) {
             blinkDetector.reset()
             landmarker.close()
+            l2cs.close()
         }
     }
 }
