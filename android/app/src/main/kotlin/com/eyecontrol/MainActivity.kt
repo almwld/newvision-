@@ -43,6 +43,8 @@ class MainActivity : FlutterActivity() {
         TrackingRuntime.initialize(this)
         calibrationRepository = TrackingRuntime.calibrationRepository
         gazeRepository = TrackingRuntime.repository
+        settingsStorage = SettingsStorage(getSharedPreferences("newvision", MODE_PRIVATE))
+        currentSettings = settingsStorage.load()
     }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
