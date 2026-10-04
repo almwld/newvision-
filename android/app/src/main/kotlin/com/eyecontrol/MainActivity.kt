@@ -10,9 +10,7 @@ import android.os.Bundle
 import android.provider.Settings
 import android.view.accessibility.AccessibilityManager
 import androidx.core.content.ContextCompat
-import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
-import androidx.lifecycle.repeatOnLifecycle
 import com.eyecontrol.core.constants.DwellConfiguration
 import com.eyecontrol.core.constants.NativeConstants
 import com.eyecontrol.core.logging.AppLogger
@@ -37,7 +35,6 @@ import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
@@ -72,26 +69,6 @@ class MainActivity : FlutterActivity() {
             radiusPx = NativeConstants.DWELL_RADIUS_PX,
             onDwell = ::performDwellTap,
         )
-        lifecycleScope.launch {
-            repeatOnLifecycle(Lifecycle.State.RESUMED) {
-                gazeRepository.latestScreenPoint().collectLatest { point ->
-                    if (point == null || point.isBlinking) return@collectLatest
-                    OverlayCursorService.update(point)
-                    val zone = zoneDetector.detect(point)
-                    if (zone == null) {
-                        zoneTracker.reset()
-                        dwellController.update(point)
-                    } else {
-                        dwellController.reset()
-                        if (zoneTracker.update(zone) is ZoneActivationResult.Activated) {
-                            performZoneAction(zone)
-                        }
-                    }
-                }
-            }
-        }
-    }
-
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         EventChannel(
