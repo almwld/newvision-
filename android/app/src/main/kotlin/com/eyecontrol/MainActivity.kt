@@ -40,21 +40,9 @@ class MainActivity : FlutterActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        calibrationRepository = TrackingRuntime.calibrationRepository
         TrackingRuntime.initialize(this)
+        calibrationRepository = TrackingRuntime.calibrationRepository
         gazeRepository = TrackingRuntime.repository
-        hapticFeedback = HapticFeedback(this)
-        settingsStorage = SettingsStorage(getSharedPreferences("newvision", MODE_PRIVATE))
-        currentSettings = settingsStorage.load()
-        val screenWidth = resources.displayMetrics.widthPixels
-        val screenHeight = resources.displayMetrics.heightPixels
-        zoneDetector = GazeZoneDetector(screenWidth, screenHeight) { currentSettings }
-        zoneTracker = ZoneActivationTracker(currentSettings.activationMs, currentSettings.cooldownMs)
-        dwellController = DwellController(
-            durationMs = dwellDuration(currentSettings),
-            radiusPx = NativeConstants.DWELL_RADIUS_PX,
-            onDwell = ::performDwellTap,
-        )
     }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
