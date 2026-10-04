@@ -14,6 +14,16 @@ import com.eyecontrol.MainActivity
 import com.eyecontrol.R
 import com.eyecontrol.data.camera.CameraController
 import com.eyecontrol.data.camera.TrackingRuntime
+import com.eyecontrol.core.constants.DwellConfiguration
+import com.eyecontrol.core.constants.NativeConstants
+import com.eyecontrol.data.settings.GazeZoneDetector
+import com.eyecontrol.data.settings.GazeZoneSettings
+import com.eyecontrol.data.settings.GazeZone
+import com.eyecontrol.data.settings.SettingsStorage
+import com.eyecontrol.data.settings.ZoneActivationResult
+import com.eyecontrol.data.settings.ZoneActivationTracker
+import com.eyecontrol.domain.usecase.DwellController
+import com.eyecontrol.service.TouchAccessibilityService
 
 /**
  * Owns the CameraX pipeline so tracking is independent from MainActivity.
@@ -29,6 +39,11 @@ class TrackingForegroundService : LifecycleService() {
     }
 
     private var cameraController: CameraController? = null
+    private lateinit var settingsStorage: SettingsStorage
+    private lateinit var zoneDetector: GazeZoneDetector
+    private lateinit var zoneTracker: ZoneActivationTracker
+    private lateinit var dwellController: DwellController
+    private lateinit var hapticFeedback: HapticFeedback
 
     override fun onCreate() {
         super.onCreate()
@@ -36,8 +51,22 @@ class TrackingForegroundService : LifecycleService() {
         TrackingRuntime.initialize(this)
         createChannel()
         startAsForeground()
+        settingsStorage = SettingsStorage(getSharedPreferences("newvision", MODE_PRIVATE))
+        val settings = settingsStorage.load()
+        zoneDetector = GazeZoneDetector(
+            resources.displayMetrics.widthPixels,
+            resources.displayMetrics.heightPixels,
+        ) { settingsStorage.load() }
+        zoneTracker = ZoneActivationTracker(settings.activationMs, settings.cooldownMs)
+        hapticFeedback = HapticFeedback(this)
+        dwellController = DwellController(
+            durationMs = if (settings.fastClickEnabled) settings.fastClickMs else NativeConstants.DWELL_DURATION_MS,
+            radiusPx = NativeConstants.DWELL_RADIUS_PX,
+            onDwell = ::performDwellTap,
+        )
         cameraController = CameraController(this, this, TrackingRuntime.repository)
         cameraController?.start()
+        startGazeControlLoop()
         if (android.provider.Settings.canDrawOverlays(this)) {
             startService(Intent(this, OverlayCursorService::class.java))
         }
@@ -90,6 +119,44 @@ class TrackingForegroundService : LifecycleService() {
             .setOngoing(true)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .build()
+    }
+
+    private fun startGazeControlLoop() {
+        lifecycleScope.launch {
+            TrackingRuntime.repository.latestScreenPoint().collectLatest { point ->
+                if (point == null || point.isBlinking) return@collectLatest
+                OverlayCursorService.update(point)
+                val zone = zoneDetector.detect(point)
+                if (zone == null) {
+                    zoneTracker.reset()
+                    dwellController.update(point)
+                } else {
+                    dwellController.reset()
+                    if (zoneTracker.update(zone) is ZoneActivationResult.Activated) {
+                        performZoneAction(zone)
+                    }
+                }
+            }
+        }
+    }
+
+    private fun performZoneAction(zone: GazeZone) {
+        val service = TouchAccessibilityService.getInstance()
+        val success = when (zone) {
+            GazeZone.TOP -> service?.scrollUp() ?: false
+            GazeZone.BOTTOM -> service?.scrollDown() ?: false
+            GazeZone.LEFT -> service?.scrollLeft() ?: false
+            GazeZone.RIGHT -> service?.scrollRight() ?: false
+        }
+        if (success) hapticFeedback.click()
+        com.eyecontrol.core.logging.AppLogger.i(
+            "Background gaze zone " + zone.name + ": " +
+                if (success) "activated" else "accessibility unavailable",
+        )
+    }
+
+    private fun performDwellTap(x: Float, y: Float) {
+        if (TouchAccessibilityService.performTap(x, y)) hapticFeedback.click()
     }
 
     override fun onDestroy() {
