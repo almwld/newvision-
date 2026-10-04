@@ -15,6 +15,7 @@ import com.eyecontrol.core.constants.DwellConfiguration
 import com.eyecontrol.core.logging.AppLogger
 import com.eyecontrol.data.calibration.CalibrationFeatureSample
 import com.eyecontrol.data.calibration.CalibrationSample
+import com.eyecontrol.data.calibration.CalibrationAngleSample
 import com.eyecontrol.data.camera.TrackingRuntime
 import com.eyecontrol.data.repository.NativeCalibrationRepository
 import com.eyecontrol.data.repository.NativeGazeRepository
@@ -139,6 +140,9 @@ class MainActivity : FlutterActivity() {
                                         "confidence" to it.confidence.toDouble(),
                                         "timestampMs" to it.timestampNs / 1_000_000L,
                                         "blinking" to !it.eyeOpen,
+                                        "yawDegrees" to it.yawDegrees,
+                                        "pitchDegrees" to it.pitchDegrees,
+                                        "gazeConfidence" to it.gazeConfidence,
                                     )
                                 },
                             )
@@ -155,11 +159,23 @@ class MainActivity : FlutterActivity() {
                             if (rawSamples.size < 9) {
                                 return@setMethodCallHandler result.error("INVALID_ARGUMENT", "Nine calibration samples are required.", null)
                             }
+                            val useAngles = rawSamples.all {
+                                it["yawDegrees"] is Number && it["pitchDegrees"] is Number
+                            }
                             val useV2 = rawSamples.all {
                                 it["leftIrisX"] is Number && it["leftIrisY"] is Number &&
                                     it["rightIrisX"] is Number && it["rightIrisY"] is Number
                             }
-                            if (useV2) {
+                            if (useAngles) {
+                                calibrationRepository.fitAngles(rawSamples.map {
+                                    CalibrationAngleSample(
+                                        yawDegrees = (it["yawDegrees"] as Number).toFloat(),
+                                        pitchDegrees = (it["pitchDegrees"] as Number).toFloat(),
+                                        targetX = (it["targetX"] as Number).toFloat(),
+                                        targetY = (it["targetY"] as Number).toFloat(),
+                                    )
+                                })
+                            } else if (useV2) {
                                 calibrationRepository.fitV2(rawSamples.map {
                                     CalibrationFeatureSample(
                                         leftIrisX = (it["leftIrisX"] as Number).toFloat(),
