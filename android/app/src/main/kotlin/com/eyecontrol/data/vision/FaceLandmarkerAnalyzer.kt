@@ -16,6 +16,7 @@ import com.google.mediapipe.tasks.core.BaseOptions
 import com.google.mediapipe.tasks.vision.core.RunningMode
 import com.google.mediapipe.tasks.vision.facelandmarker.FaceLandmarker
 import com.google.mediapipe.tasks.vision.facelandmarker.FaceLandmarkerResult
+import java.nio.ByteBuffer
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.hypot
 import kotlin.math.min
@@ -56,14 +57,7 @@ class FaceLandmarkerAnalyzer(
         try {
             val plane = imageProxy.planes.firstOrNull()
                 ?: throw IllegalStateException("Camera returned no RGBA plane.")
-            val buffer = plane.buffer
-            buffer.rewind()
-            val bitmap = Bitmap.createBitmap(
-                imageProxy.width,
-                imageProxy.height,
-                Bitmap.Config.ARGB_8888,
-            )
-            bitmap.copyPixelsFromBuffer(buffer)
+            val bitmap = rgbaBitmap(imageProxy, plane.buffer, plane.rowStride, plane.pixelStride)
             val matrix = Matrix().apply {
                 postRotate(imageProxy.imageInfo.rotationDegrees.toFloat())
                 if (frontCamera) postScale(-1f, 1f, 0f, 0f)
@@ -125,6 +119,32 @@ class FaceLandmarkerAnalyzer(
                 timestampNs = result.timestampMs() * 1_000_000L,
             ),
         )
+    }
+
+    private fun rgbaBitmap(
+        imageProxy: ImageProxy,
+        source: ByteBuffer,
+        rowStride: Int,
+        pixelStride: Int,
+    ): Bitmap {
+        val width = imageProxy.width
+        val height = imageProxy.height
+        require(pixelStride >= 4) { "Unsupported RGBA pixel stride: $pixelStride" }
+
+        val packed = ByteBuffer.allocateDirect(width * height * 4)
+        val row = ByteArray(width * 4)
+        val duplicate = source.duplicate()
+
+        for (y in 0 until height) {
+            duplicate.position(y * rowStride)
+            duplicate.get(row, 0, width * 4)
+            packed.put(row)
+        }
+        packed.rewind()
+
+        return Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888).also {
+            it.copyPixelsFromBuffer(packed)
+        }
     }
 
     private fun irisDiameter(iris: List<NormalizedLandmark>): Float {
