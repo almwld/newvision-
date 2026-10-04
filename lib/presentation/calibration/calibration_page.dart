@@ -93,6 +93,12 @@ class _CalibrationPageState extends State<CalibrationPage> {
           });
         } else {
           _error = 'لم يتم التقاط نظر ثابت. حاول مرة أخرى.';
+          _running = false;
+          _index = -1;
+          await _platform.stopCamera();
+          if (!mounted) return;
+          setState(() {});
+          return;
         }
 
         if (!mounted) return;
@@ -100,6 +106,7 @@ class _CalibrationPageState extends State<CalibrationPage> {
           setState(() => _saving = true);
           try {
             await _platform.fitCalibration(_samples);
+            await _platform.stopCamera();
             if (mounted) {
               setState(() {
                 _saving = false;
@@ -134,6 +141,9 @@ class _CalibrationPageState extends State<CalibrationPage> {
   @override
   void dispose() {
     _timer?.cancel();
+    if (_running) {
+      unawaited(_platform.stopCamera());
+    }
     super.dispose();
   }
 
