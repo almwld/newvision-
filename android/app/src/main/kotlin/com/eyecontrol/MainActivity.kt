@@ -12,7 +12,6 @@ import android.view.accessibility.AccessibilityManager
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.eyecontrol.core.constants.DwellConfiguration
-import com.eyecontrol.core.constants.NativeConstants
 import com.eyecontrol.core.logging.AppLogger
 import com.eyecontrol.data.calibration.CalibrationFeatureSample
 import com.eyecontrol.data.calibration.CalibrationSample
@@ -20,15 +19,8 @@ import com.eyecontrol.data.camera.TrackingRuntime
 import com.eyecontrol.data.repository.NativeCalibrationRepository
 import com.eyecontrol.data.repository.NativeGazeRepository
 import com.eyecontrol.data.repository.NativeGazeRepositoryFactory
-import com.eyecontrol.data.settings.GazeZoneDetector
 import com.eyecontrol.data.settings.GazeZoneSettings
-import com.eyecontrol.data.settings.GazeZone
 import com.eyecontrol.data.settings.SettingsStorage
-import com.eyecontrol.data.settings.ZoneActivationResult
-import com.eyecontrol.data.settings.ZoneActivationTracker
-import com.eyecontrol.domain.usecase.DwellController
-import com.eyecontrol.service.HapticFeedback
-import com.eyecontrol.service.OverlayCursorService
 import com.eyecontrol.service.TouchAccessibilityService
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -43,12 +35,8 @@ class MainActivity : FlutterActivity() {
     private lateinit var gazeRepository: NativeGazeRepository
     private lateinit var calibrationRepository: NativeCalibrationRepository
     private lateinit var repositoryFactory: NativeGazeRepositoryFactory
-    private lateinit var dwellController: DwellController
-    private lateinit var hapticFeedback: HapticFeedback
     private lateinit var settingsStorage: SettingsStorage
     private var currentSettings = GazeZoneSettings()
-    private lateinit var zoneDetector: GazeZoneDetector
-    private lateinit var zoneTracker: ZoneActivationTracker
     private var cameraRequested = false
     private var gazeEventJob: Job? = null
 
@@ -234,14 +222,10 @@ class MainActivity : FlutterActivity() {
                         "settings.setGazeZones" -> {
                             currentSettings = settingsFromCall(call)
                             settingsStorage.save(currentSettings)
-                            zoneTracker.configure(currentSettings.activationMs, currentSettings.cooldownMs)
-                            dwellController.configure(dwellDuration(currentSettings), NativeConstants.DWELL_RADIUS_PX)
                             result.success(settingsMap(currentSettings))
                         }
                         "settings.resetGazeZones" -> {
                             currentSettings = settingsStorage.reset()
-                            zoneTracker.configure(currentSettings.activationMs, currentSettings.cooldownMs)
-                            dwellController.configure(dwellDuration(currentSettings), NativeConstants.DWELL_RADIUS_PX)
                             result.success(settingsMap(currentSettings))
                         }
                         "dwell.configure" -> {
@@ -250,7 +234,6 @@ class MainActivity : FlutterActivity() {
                             val radius = call.argument<Double>("radiusPx")
                                 ?: return@setMethodCallHandler result.error("INVALID_ARGUMENT", "Missing radiusPx.", null)
                             DwellConfiguration.configure(duration.toLong(), radius.toFloat())
-                            dwellController.configure(duration.toLong(), radius.toFloat())
                             result.success(null)
                         }
                         else -> result.notImplemented()
@@ -261,10 +244,6 @@ class MainActivity : FlutterActivity() {
                 }
             }
     }
-
-
-    private fun dwellDuration(settings: GazeZoneSettings): Long =
-        if (settings.fastClickEnabled) settings.fastClickMs else NativeConstants.DWELL_DURATION_MS
 
     private fun settingsMap(settings: GazeZoneSettings): Map<String, Any> = mapOf(
         "enabled" to settings.enabled,
@@ -295,33 +274,6 @@ class MainActivity : FlutterActivity() {
             cooldownMs = long("cooldownMs", currentSettings.cooldownMs),
             fastClickMs = long("fastClickMs", currentSettings.fastClickMs),
         )
-    }
-
-    private fun performZoneAction(zone: GazeZone) {
-        val service = TouchAccessibilityService.getInstance()
-        val success = when (zone) {
-            GazeZone.TOP -> service?.scrollUp() ?: false
-            GazeZone.BOTTOM -> service?.scrollDown() ?: false
-            GazeZone.LEFT -> service?.scrollLeft() ?: false
-            GazeZone.RIGHT -> service?.scrollRight() ?: false
-        }
-        if (success) hapticFeedback.click()
-        AppLogger.i("Gaze zone " + zone.name + ": " + if (success) "activated" else "accessibility unavailable")
-    }
-
-    private fun startTrackingService() {
-        ContextCompat.startForegroundService(
-            this,
-            Intent(this, com.eyecontrol.service.TrackingForegroundService::class.java),
-        )
-    }
-
-    private fun stopTrackingService() {
-        stopService(Intent(this, com.eyecontrol.service.TrackingForegroundService::class.java))
-    }
-
-    private fun performDwellTap(x: Float, y: Float) {
-        if (TouchAccessibilityService.performTap(x, y)) hapticFeedback.click()
     }
 
     private fun isAccessibilityEnabled(): Boolean {
