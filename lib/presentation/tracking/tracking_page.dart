@@ -137,6 +137,14 @@ class TrackingPage extends StatelessWidget {
                 'اضغط الزر لبدء التحكم بالعين',
                 textAlign: TextAlign.center,
               ),
+              if (context.watch<TrackingProvider>().error != null) ...[
+                const SizedBox(height: 14),
+                Text(
+                  context.watch<TrackingProvider>().error!,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.red),
+                ),
+              ],
               const SizedBox(height: 32),
               FilledButton.icon(
                 onPressed: () => context.read<TrackingProvider>().start(),
