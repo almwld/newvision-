@@ -43,7 +43,7 @@ class MainActivity : FlutterActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         repositoryFactory = NativeGazeRepositoryFactory(this)
-        calibrationRepository = repositoryFactory.calibrationRepository()
+        calibrationRepository = TrackingRuntime.calibrationRepository
         TrackingRuntime.initialize(this)
         gazeRepository = TrackingRuntime.repository
         hapticFeedback = HapticFeedback(this)
