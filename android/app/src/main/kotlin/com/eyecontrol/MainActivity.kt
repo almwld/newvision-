@@ -263,6 +263,11 @@ class MainActivity : FlutterActivity() {
         )
     }
 
+    private fun startTrackingService() {
+        val intent = Intent(this, com.eyecontrol.service.TrackingForegroundService::class.java)
+        ContextCompat.startForegroundService(this, intent)
+    }
+
     private fun isAccessibilityEnabled(): Boolean {
         val manager = getSystemService(AccessibilityManager::class.java) ?: return false
         val expected = ComponentName(this, TouchAccessibilityService::class.java)
