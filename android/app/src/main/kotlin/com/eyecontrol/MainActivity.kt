@@ -36,6 +36,7 @@ import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
 class MainActivity : FlutterActivity() {
@@ -69,6 +70,8 @@ class MainActivity : FlutterActivity() {
             radiusPx = NativeConstants.DWELL_RADIUS_PX,
             onDwell = ::performDwellTap,
         )
+    }
+
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         EventChannel(
