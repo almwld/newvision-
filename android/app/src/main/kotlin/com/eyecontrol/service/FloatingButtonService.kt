@@ -14,7 +14,12 @@ import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
+import android.graphics.drawable.GradientDrawable
+import android.view.ViewGroup
+import android.widget.FrameLayout
 import android.widget.ImageView
+import android.widget.LinearLayout
+import android.widget.TextView
 import androidx.core.app.NotificationCompat
 import com.eyecontrol.MainActivity
 import com.eyecontrol.R
@@ -26,6 +31,9 @@ class FloatingButtonService : Service() {
         private const val NOTIF_ID = 1001
         const val ACTION_TOGGLE = "com.eyecontrol.TOGGLE_TRACKING"
         const val ACTION_EMERGENCY = "com.eyecontrol.EMERGENCY"
+        const val ACTION_TAP_CENTER = "com.eyecontrol.TAP_CENTER"
+        const val ACTION_SCROLL_UP = "com.eyecontrol.SCROLL_UP"
+        const val ACTION_SCROLL_DOWN = "com.eyecontrol.SCROLL_DOWN"
 
         @Volatile var isRunning = false
             private set
@@ -61,17 +69,80 @@ class FloatingButtonService : Service() {
 
     private fun addFloatingButton() {
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
-        val size = (60 * resources.displayMetrics.density).toInt()
+        val density = resources.displayMetrics.density
+        val size = (60 * density).toInt()
+
+        val container = FrameLayout(this)
         val imageView = ImageView(this).apply {
             setImageResource(R.drawable.ic_eye)
             setBackgroundResource(R.drawable.floating_button_bg)
-            setPadding(15, 15, 15, 15)
+            setPadding((15 * density).toInt(), (15 * density).toInt(), (15 * density).toInt(), (15 * density).toInt())
             contentDescription = "تحكم NewVision"
+            isClickable = true
         }
 
+        val panel = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding((8 * density).toInt(), (8 * density).toInt(), (8 * density).toInt(), (8 * density).toInt())
+            background = GradientDrawable().apply {
+                setColor(0xF2FFFFFF.toInt())
+                cornerRadius = 18f * density
+                setStroke((1 * density).toInt(), 0x330A8F83)
+            }
+            visibility = View.GONE
+            elevation = 10f * density
+        }
+
+        fun actionButton(label: String, action: String): TextView {
+            return TextView(this).apply {
+                text = label
+                textSize = 13f
+                setTextColor(0xFF263238.toInt())
+                gravity = Gravity.CENTER
+                setPadding((14 * density).toInt(), (9 * density).toInt(), (14 * density).toInt(), (9 * density).toInt())
+                isClickable = true
+                background = GradientDrawable().apply {
+                    setColor(0xFFF4F6F7.toInt())
+                    cornerRadius = 12f * density
+                }
+                setOnClickListener {
+                    sendBroadcast(Intent(action).setPackage(packageName))
+                    panel.visibility = View.GONE
+                }
+                layoutParams = LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                ).apply {
+                    bottomMargin = (5 * density).toInt()
+                }
+            }
+        }
+
+        panel.addView(actionButton("تشغيل / إيقاف التتبع", ACTION_TOGGLE))
+        panel.addView(actionButton("نقرة سريعة", ACTION_TAP_CENTER))
+        panel.addView(actionButton("تمرير لأعلى", ACTION_SCROLL_UP))
+        panel.addView(actionButton("تمرير لأسفل", ACTION_SCROLL_DOWN))
+        panel.addView(actionButton("إيقاف طارئ", ACTION_EMERGENCY))
+
+        container.addView(
+            panel,
+            FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                Gravity.TOP or Gravity.START,
+            ).apply {
+                leftMargin = 0
+                topMargin = size + (8 * density).toInt()
+            },
+        )
+        container.addView(
+            imageView,
+            FrameLayout.LayoutParams(size, size, Gravity.TOP or Gravity.START),
+        )
+
         params = WindowManager.LayoutParams(
-            size,
-            size,
+            (240 * density).toInt(),
+            (size + 300 * density).toInt(),
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
                 WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
             else
@@ -85,13 +156,13 @@ class FloatingButtonService : Service() {
             y = 300
         }
 
-        imageView.setOnTouchListener(FloatingTouchListener())
-        windowManager.addView(imageView, params)
-        floatingView = imageView
-        Log.d(TAG, "Floating button added")
+        imageView.setOnTouchListener(FloatingTouchListener(panel))
+        windowManager.addView(container, params)
+        floatingView = container
+        Log.d(TAG, "Floating control added")
     }
 
-    private inner class FloatingTouchListener : View.OnTouchListener {
+    private inner class FloatingTouchListener(private val panel: View) : View.OnTouchListener {
         private var initX = 0
         private var initY = 0
         private var touchX = 0f
@@ -129,8 +200,8 @@ class FloatingButtonService : Service() {
                             Log.d(TAG, "Emergency stop")
                             sendBroadcast(Intent(ACTION_EMERGENCY).setPackage(packageName))
                         } else {
-                            Log.d(TAG, "Toggle tracking")
-                            sendBroadcast(Intent(ACTION_TOGGLE).setPackage(packageName))
+                            panel.visibility = if (panel.visibility == View.VISIBLE) View.GONE else View.VISIBLE
+                            Log.d(TAG, "Control panel toggled")
                         }
                     } else {
                         val screenWidth = resources.displayMetrics.widthPixels
