@@ -5,6 +5,9 @@ class CameraRecovery(
     private val maxAttempts: Int = 3,
     private val baseDelayMs: Long = 250,
 ) {
+    fun delayForAttempt(attempt: Int): Long =
+        baseDelayMs * (1L shl attempt.coerceIn(0, 30))
+
     fun <T> run(operation: () -> T): T {
         var last: Throwable? = null
         for (attempt in 0 until maxAttempts) {
