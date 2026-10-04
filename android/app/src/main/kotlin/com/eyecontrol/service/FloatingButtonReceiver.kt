@@ -24,6 +24,18 @@ class FloatingButtonReceiver : BroadcastReceiver() {
                 context.stopService(Intent(context, TrackingForegroundService::class.java))
                 context.stopService(Intent(context, OverlayCursorService::class.java))
             }
+            FloatingButtonService.ACTION_TAP_CENTER -> {
+                val service = TouchAccessibilityService.getInstance()
+                val x = context.resources.displayMetrics.widthPixels * 0.5f
+                val y = context.resources.displayMetrics.heightPixels * 0.5f
+                service?.let { TouchAccessibilityService.performTap(x, y) }
+            }
+            FloatingButtonService.ACTION_SCROLL_UP -> {
+                TouchAccessibilityService.getInstance()?.scrollUp()
+            }
+            FloatingButtonService.ACTION_SCROLL_DOWN -> {
+                TouchAccessibilityService.getInstance()?.scrollDown()
+            }
         }
     }
 }
