@@ -11,6 +11,9 @@ data class GazeSample(
     val pupilDiameter: Float,
     val eyeOpen: Boolean,
     val timestampNs: Long,
+    val yawDegrees: Float? = null,
+    val pitchDegrees: Float? = null,
+    val gazeConfidence: Float? = null,
 ) {
     fun eyeFeatures(): EyeFeatures = EyeFeatures(
         leftIrisX = leftIrisX,
