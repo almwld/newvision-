@@ -18,7 +18,6 @@ import com.eyecontrol.data.calibration.CalibrationSample
 import com.eyecontrol.data.camera.TrackingRuntime
 import com.eyecontrol.data.repository.NativeCalibrationRepository
 import com.eyecontrol.data.repository.NativeGazeRepository
-import com.eyecontrol.data.repository.NativeGazeRepositoryFactory
 import com.eyecontrol.data.settings.GazeZoneSettings
 import com.eyecontrol.data.settings.SettingsStorage
 import com.eyecontrol.service.TouchAccessibilityService
@@ -34,7 +33,6 @@ import kotlinx.coroutines.launch
 class MainActivity : FlutterActivity() {
     private lateinit var gazeRepository: NativeGazeRepository
     private lateinit var calibrationRepository: NativeCalibrationRepository
-    private lateinit var repositoryFactory: NativeGazeRepositoryFactory
     private lateinit var settingsStorage: SettingsStorage
     private var currentSettings = GazeZoneSettings()
     private var cameraRequested = false
@@ -42,7 +40,6 @@ class MainActivity : FlutterActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        repositoryFactory = NativeGazeRepositoryFactory(this)
         calibrationRepository = TrackingRuntime.calibrationRepository
         TrackingRuntime.initialize(this)
         gazeRepository = TrackingRuntime.repository
