@@ -32,6 +32,9 @@ class GazeSmoother {
         return Pair(x.coerceIn(0f, 1f), y.coerceIn(0f, 1f))
     }
 
+    fun filterAngles(yawDegrees: Float, pitchDegrees: Float, timestampMs: Long): Pair<Float, Float> =
+        filter(yawDegrees, pitchDegrees, timestampMs, 1f)
+
     fun filterEyeFeatures(features: EyeFeatures, timestampMs: Long): EyeFeatures {
         val input = features.toFloatArray()
         val output = FloatArray(4)
