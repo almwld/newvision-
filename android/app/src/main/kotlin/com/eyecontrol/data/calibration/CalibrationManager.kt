@@ -47,6 +47,8 @@ class CalibrationManager(
 
     fun hasActiveModel(): Boolean = activeVersion != 0
 
+    fun hasAngleModel(): Boolean = activeVersion == 3
+
     fun activeVersion(): Int = activeVersion
 
     fun transform(features: FloatArray): Pair<Float, Float> {
