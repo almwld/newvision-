@@ -129,7 +129,7 @@ class FaceLandmarkerAnalyzer(
     ): Bitmap {
         val width = imageProxy.width
         val height = imageProxy.height
-        require(pixelStride >= 4) { "Unsupported RGBA pixel stride: $pixelStride" }
+        require(pixelStride == 4) { "Unsupported RGBA pixel stride: $pixelStride" }
 
         val packed = ByteBuffer.allocateDirect(width * height * 4)
         val row = ByteArray(width * 4)
