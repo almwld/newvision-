@@ -17,6 +17,7 @@ import com.eyecontrol.data.camera.CameraController
 import com.eyecontrol.data.camera.TrackingRuntime
 import com.eyecontrol.core.constants.NativeConstants
 import com.eyecontrol.data.settings.GazeZoneDetector
+import com.eyecontrol.data.settings.GazeZoneSettings
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import com.eyecontrol.data.settings.GazeZone
@@ -44,6 +45,8 @@ class TrackingForegroundService : LifecycleService() {
     private lateinit var zoneTracker: ZoneActivationTracker
     private lateinit var dwellController: DwellController
     private lateinit var hapticFeedback: HapticFeedback
+    private lateinit var preferencesListener: android.content.SharedPreferences.OnSharedPreferenceChangeListener
+    private lateinit var currentSettings: GazeZoneSettings
 
     override fun onCreate() {
         super.onCreate()
@@ -52,18 +55,27 @@ class TrackingForegroundService : LifecycleService() {
         createChannel()
         startAsForeground()
         settingsStorage = SettingsStorage(getSharedPreferences("newvision", MODE_PRIVATE))
-        val settings = settingsStorage.load()
+        currentSettings = settingsStorage.load()
         zoneDetector = GazeZoneDetector(
             resources.displayMetrics.widthPixels,
             resources.displayMetrics.heightPixels,
-        ) { settingsStorage.load() }
-        zoneTracker = ZoneActivationTracker(settings.activationMs, settings.cooldownMs)
+        ) { currentSettings }
+        zoneTracker = ZoneActivationTracker(currentSettings.activationMs, currentSettings.cooldownMs)
         hapticFeedback = HapticFeedback(this)
         dwellController = DwellController(
-            durationMs = if (settings.fastClickEnabled) settings.fastClickMs else NativeConstants.DWELL_DURATION_MS,
+            durationMs = if (currentSettings.fastClickEnabled) currentSettings.fastClickMs else NativeConstants.DWELL_DURATION_MS,
             radiusPx = NativeConstants.DWELL_RADIUS_PX,
             onDwell = ::performDwellTap,
         )
+        preferencesListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, _ ->
+            currentSettings = settingsStorage.load()
+            zoneTracker.configure(currentSettings.activationMs, currentSettings.cooldownMs)
+            dwellController.configure(
+                if (currentSettings.fastClickEnabled) currentSettings.fastClickMs else NativeConstants.DWELL_DURATION_MS,
+                NativeConstants.DWELL_RADIUS_PX,
+            )
+        }
+        settingsStorage.registerOnSharedPreferenceChangeListener(preferencesListener)
         cameraController = CameraController(this, this, TrackingRuntime.repository)
         cameraController?.start()
         startGazeControlLoop()
@@ -160,6 +172,7 @@ class TrackingForegroundService : LifecycleService() {
     }
 
     override fun onDestroy() {
+        settingsStorage.unregisterOnSharedPreferenceChangeListener(preferencesListener)
         cameraController?.close()
         cameraController = null
         TrackingRuntime.reset()
