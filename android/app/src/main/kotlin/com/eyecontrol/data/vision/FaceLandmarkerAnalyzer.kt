@@ -17,6 +17,7 @@ import com.google.mediapipe.tasks.vision.core.RunningMode
 import com.google.mediapipe.tasks.vision.facelandmarker.FaceLandmarker
 import com.google.mediapipe.tasks.vision.facelandmarker.FaceLandmarkerResult
 import java.nio.ByteBuffer
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.hypot
 import kotlin.math.min
@@ -30,6 +31,7 @@ class FaceLandmarkerAnalyzer(
     private val blinkDetector = BlinkDetector()
     private val irisNormalizer = IrisNormalizer()
     private val l2cs = L2csInferenceEngine(context)
+    private val pendingFrames = ConcurrentHashMap<Long, Bitmap>()
     private val l2cs = L2csInferenceEngine(context)
 
     init {
@@ -68,6 +70,10 @@ class FaceLandmarkerAnalyzer(
                 bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true,
             )
             if (transformed !== bitmap) bitmap.recycle()
+            pendingFrames[timestamp] = transformed
+            while (pendingFrames.size > 3) {
+                pendingFrames.entries.minByOrNull { it.key }?.let { pendingFrames.remove(it.key)?.recycle() }
+            }
             landmarker.detectAsync(BitmapImageBuilder(transformed).build(), timestamp)
         } catch (error: Exception) {
             AppLogger.e("Frame analysis failed", error)
@@ -110,7 +116,13 @@ class FaceLandmarkerAnalyzer(
         val minY = landmarks.minOf { it.y() }.coerceIn(0f, 1f) * image.height.toFloat()
         val maxX = landmarks.maxOf { it.x() }.coerceIn(0f, 1f) * image.width.toFloat()
         val maxY = landmarks.maxOf { it.y() }.coerceIn(0f, 1f) * image.height.toFloat()
-        val l2csResult = runCatching { l2cs.infer(image.bitmap, minX, minY, maxX, maxY) }
+        val frameBitmap = pendingFrames.remove(result.timestampMs())
+        val l2csResult = frameBitmap?.let { frame ->
+            runCatching { l2cs.infer(frame, minX, minY, maxX, maxY) }
+                .onFailure { AppLogger.e("L2CS inference failed", it) }
+                .getOrNull()
+                .also { frame.recycle() }
+        }
             .onFailure { AppLogger.e("L2CS inference failed", it) }
             .getOrNull()
         val minX = landmarks.minOf { it.x() }.coerceIn(0f, 1f) * image.width.toFloat()
@@ -189,6 +201,8 @@ class FaceLandmarkerAnalyzer(
         if (closed.compareAndSet(false, true)) {
             blinkDetector.reset()
             landmarker.close()
+            pendingFrames.values.forEach { it.recycle() }
+            pendingFrames.clear()
             l2cs.close()
             l2cs.close()
         }
