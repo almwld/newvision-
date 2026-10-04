@@ -61,7 +61,7 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
     kotlinOptions { jvmTarget = "17" }
-    androidResources { noCompress += "task" }
+    androidResources { noCompress += listOf("task", "tflite") }
     packaging {
         resources {
             excludes += setOf(
