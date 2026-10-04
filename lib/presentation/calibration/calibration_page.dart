@@ -36,7 +36,18 @@ class _CalibrationPageState extends State<CalibrationPage> {
       _index = 0;
       _running = true;
     });
-    await _captureTarget();
+
+    try {
+      await _platform.startCamera();
+      await _captureTarget();
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _running = false;
+        _index = -1;
+        _error = error.toString();
+      });
+    }
   }
 
   Future<void> _captureTarget() async {
