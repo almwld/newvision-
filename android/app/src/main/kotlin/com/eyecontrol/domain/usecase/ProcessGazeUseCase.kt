@@ -22,17 +22,30 @@ class ProcessGazeUseCase(
             )
         }
 
-        val features = smoother.filterEyeFeatures(
-            sample.eyeFeatures(),
-            sample.timestampNs / 1_000_000L,
-        )
-        val normalized = calibrationManager.transform(features.toFloatArray())
+        val normalized = if (
+            sample.yawDegrees != null &&
+            sample.pitchDegrees != null &&
+            calibrationManager.hasAngleModel()
+        ) {
+            val angles = smoother.filterAngles(
+                sample.yawDegrees,
+                sample.pitchDegrees,
+                sample.timestampNs / 1_000_000L,
+            )
+            calibrationManager.transformAngles(angles.first, angles.second)
+        } else {
+            val features = smoother.filterEyeFeatures(
+                sample.eyeFeatures(),
+                sample.timestampNs / 1_000_000L,
+            )
+            calibrationManager.transform(features.toFloatArray())
+        }
         val point = ScreenPoint(
             xPx = (normalized.first.coerceIn(0f, 1f) * screenWidth)
                 .coerceIn(0f, (screenWidth - 1).coerceAtLeast(0).toFloat()),
             yPx = (normalized.second.coerceIn(0f, 1f) * screenHeight)
                 .coerceIn(0f, (screenHeight - 1).coerceAtLeast(0).toFloat()),
-            confidence = sample.confidence,
+            confidence = (sample.gazeConfidence ?: sample.confidence).coerceIn(0f, 1f),
             isBlinking = false,
             timestampNs = sample.timestampNs,
         )
