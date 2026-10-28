@@ -92,7 +92,7 @@ class MainActivity : FlutterActivity() {
                                 result.error("CALIBRATION_REQUIRED", "Calibration must be completed before tracking starts.", null)
                             } else {
                                 cameraRequested = true
-                                startTrackingService()
+                                startTrackingService(forCalibration)
                                 result.success(null)
                             }
                         }
@@ -283,8 +283,9 @@ class MainActivity : FlutterActivity() {
         )
     }
 
-    private fun startTrackingService() {
+    private fun startTrackingService(forCalibration: Boolean = false) {
         val intent = Intent(this, com.eyecontrol.service.TrackingForegroundService::class.java)
+            .putExtra(com.eyecontrol.service.TrackingForegroundService.EXTRA_CALIBRATION_MODE, forCalibration)
         ContextCompat.startForegroundService(this, intent)
     }
 
