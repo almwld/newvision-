@@ -27,6 +27,7 @@ class _CalibrationPageState extends State<CalibrationPage> {
   Timer? _timer;
   final List<Map<String, double>> _samples = [];
   final List<Map<String, double>> _current = [];
+  final List<Map<String, double>> _currentAngles = [];
   bool _reading = false;
 
   Future<void> _start() async {
@@ -53,6 +54,7 @@ class _CalibrationPageState extends State<CalibrationPage> {
   Future<void> _captureTarget() async {
     if (!_running || _index < 0 || _index >= targets.length) return;
     _current.clear();
+    _currentAngles.clear();
     var ticks = 0;
     _timer?.cancel();
     _timer = Timer.periodic(const Duration(milliseconds: 50), (timer) async {
@@ -73,6 +75,15 @@ class _CalibrationPageState extends State<CalibrationPage> {
             'rightIrisX': (gaze['rightIrisX'] as num).toDouble(),
             'rightIrisY': (gaze['rightIrisY'] as num).toDouble(),
           });
+          final yaw = gaze['yawDegrees'];
+          final pitch = gaze['pitchDegrees'];
+          if (yaw is num && pitch is num &&
+              yaw.toDouble().isFinite && pitch.toDouble().isFinite) {
+            _currentAngles.add({
+              'yawDegrees': yaw.toDouble(),
+              'pitchDegrees': pitch.toDouble(),
+            });
+          }
         }
       }
       _reading = false;
@@ -83,14 +94,26 @@ class _CalibrationPageState extends State<CalibrationPage> {
         if (_current.length >= 8) {
           double average(String key) =>
               _current.map((item) => item[key]!).reduce((a, b) => a + b) / _current.length;
-          _samples.add({
+          final sample = <String, double>{
             'leftIrisX': average('leftIrisX'),
             'leftIrisY': average('leftIrisY'),
             'rightIrisX': average('rightIrisX'),
             'rightIrisY': average('rightIrisY'),
             'targetX': point.dx,
             'targetY': point.dy,
-          });
+          };
+          // Prefer the same L2CS yaw/pitch calibration path used by the
+          // native inference pipeline, but retain iris-feature calibration
+          // when the optional L2CS model is unavailable or produces too few
+          // valid samples at any target.
+          if (_currentAngles.length >= 8) {
+            double averageAngle(String key) => _currentAngles
+                .map((item) => item[key]!)
+                .reduce((a, b) => a + b) / _currentAngles.length;
+            sample['yawDegrees'] = averageAngle('yawDegrees');
+            sample['pitchDegrees'] = averageAngle('pitchDegrees');
+          }
+          _samples.add(sample);
         } else {
           _error = 'لم يتم التقاط نظر ثابت. حاول مرة أخرى.';
           _running = false;
