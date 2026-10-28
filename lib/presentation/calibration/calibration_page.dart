@@ -39,7 +39,7 @@ class _CalibrationPageState extends State<CalibrationPage> {
     });
 
     try {
-      await _platform.startCamera();
+      await _platform.startCamera(forCalibration: true);
       await _captureTarget();
     } catch (error) {
       if (!mounted) return;
