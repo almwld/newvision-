@@ -33,6 +33,7 @@ class TrackingForegroundService : LifecycleService() {
     companion object {
         private const val CHANNEL_ID = "newvision_tracking"
         private const val NOTIFICATION_ID = 1002
+        const val EXTRA_CALIBRATION_MODE = "com.eyecontrol.extra.CALIBRATION_MODE"
 
         @Volatile
         var isRunning: Boolean = false
@@ -40,6 +41,8 @@ class TrackingForegroundService : LifecycleService() {
     }
 
     private var cameraController: CameraController? = null
+    @Volatile private var calibrationMode = false
+    private var gazeControlLoopStarted = false
     private lateinit var settingsStorage: SettingsStorage
     private lateinit var zoneDetector: GazeZoneDetector
     private lateinit var zoneTracker: ZoneActivationTracker
@@ -78,10 +81,6 @@ class TrackingForegroundService : LifecycleService() {
         settingsStorage.registerOnSharedPreferenceChangeListener(preferencesListener)
         cameraController = CameraController(this, this, TrackingRuntime.repository)
         cameraController?.start()
-        startGazeControlLoop()
-        if (android.provider.Settings.canDrawOverlays(this)) {
-            startService(Intent(this, OverlayCursorService::class.java))
-        }
     }
 
     private fun startAsForeground() {
@@ -136,7 +135,7 @@ class TrackingForegroundService : LifecycleService() {
     private fun startGazeControlLoop() {
         lifecycleScope.launch {
             TrackingRuntime.repository.latestScreenPoint().collectLatest { point ->
-                if (point == null || point.isBlinking) return@collectLatest
+                if (calibrationMode || point == null || point.isBlinking) return@collectLatest
                 OverlayCursorService.update(point)
                 val zone = zoneDetector.detect(point)
                 if (zone == null) {
@@ -182,6 +181,18 @@ class TrackingForegroundService : LifecycleService() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        calibrationMode = intent?.getBooleanExtra(EXTRA_CALIBRATION_MODE, false) ?: false
+        if (calibrationMode) {
+            stopService(Intent(this, OverlayCursorService::class.java))
+        } else {
+            if (android.provider.Settings.canDrawOverlays(this)) {
+                startService(Intent(this, OverlayCursorService::class.java))
+            }
+            if (!gazeControlLoopStarted) {
+                gazeControlLoopStarted = true
+                startGazeControlLoop()
+            }
+        }
         return Service.START_STICKY
     }
 
