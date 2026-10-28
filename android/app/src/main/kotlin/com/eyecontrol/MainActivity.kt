@@ -84,9 +84,10 @@ class MainActivity : FlutterActivity() {
                 try {
                     when (call.method) {
                         "camera.start" -> {
+                            val forCalibration = call.argument<Boolean>("forCalibration") ?: false
                             if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
                                 result.error("CAMERA_PERMISSION", "Camera permission is required.", null)
-                            } else if (!calibrationRepository.hasActiveModel()) {
+                            } else if (!forCalibration && !calibrationRepository.hasActiveModel()) {
                                 result.error("CALIBRATION_REQUIRED", "Calibration must be completed before tracking starts.", null)
                             } else {
                                 cameraRequested = true
