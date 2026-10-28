@@ -54,6 +54,13 @@ void main() {
     ]));
   });
 
+
+  test('starts camera in calibration mode without an existing model', () async {
+    await platform.startCamera(forCalibration: true);
+    final call = calls.singleWhere((call) => call.method == 'camera.start');
+    expect(call.arguments, {'forCalibration': true});
+  });
+
   test('round trips calibration and gesture operations', () async {
     await platform.fitCalibration([
       {'x': 0.1, 'y': 0.2, 'targetX': 0.2, 'targetY': 0.3},
