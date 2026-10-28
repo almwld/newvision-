@@ -1,6 +1,7 @@
 package com.eyecontrol.pipeline
 
 import com.eyecontrol.data.calibration.CalibrationFeatureSample
+import com.eyecontrol.data.calibration.CalibrationAngleSample
 import com.eyecontrol.data.calibration.CalibrationManager
 import com.eyecontrol.data.filter.GazeSmoother
 import com.eyecontrol.domain.model.GazeSample
@@ -37,6 +38,50 @@ class GazePipelineIntegrationTest {
         assertNotNull(point)
         assertEquals(500f, point!!.xPx, 20f)
         assertEquals(500f, point.yPx, 20f)
+    }
+
+    @Test
+    fun l2csAngleCalibration_activatesAngleModelAndProducesFinitePoint() {
+        val manager = CalibrationManager(null)
+        val targets = floatArrayOf(0.1f, 0.5f, 0.9f)
+        val angles = buildList {
+            for (row in 0..2) {
+                for (column in 0..2) {
+                    add(
+                        CalibrationAngleSample(
+                            yawDegrees = (column - 1) * 25f,
+                            pitchDegrees = (row - 1) * 20f,
+                            targetX = targets[column],
+                            targetY = targets[row],
+                        ),
+                    )
+                }
+            }
+        }
+        manager.fitAngles(angles)
+        assertTrue(manager.hasAngleModel())
+
+        val processor = ProcessGazeUseCase(GazeSmoother(), manager, 1000, 1000)
+        val point = processor.process(
+            GazeSample(
+                rawX = 0.5f,
+                rawY = 0.5f,
+                leftIrisX = 0.5f,
+                leftIrisY = 0.5f,
+                rightIrisX = 0.5f,
+                rightIrisY = 0.5f,
+                confidence = 0.9f,
+                pupilDiameter = 0.1f,
+                eyeOpen = true,
+                timestampNs = 1_000_000_000L,
+                yawDegrees = 0f,
+                pitchDegrees = 0f,
+                gazeConfidence = 0.8f,
+            ),
+        )
+        assertNotNull(point)
+        assertTrue(point!!.xPx.isFinite())
+        assertTrue(point.yPx.isFinite())
     }
 
     @Test
