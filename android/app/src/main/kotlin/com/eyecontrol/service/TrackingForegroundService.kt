@@ -20,6 +20,8 @@ import com.eyecontrol.data.settings.GazeZoneDetector
 import com.eyecontrol.data.settings.GazeZoneSettings
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import com.eyecontrol.data.settings.GazeZone
 import com.eyecontrol.data.settings.SettingsStorage
 import com.eyecontrol.data.settings.ZoneActivationResult
@@ -31,6 +33,8 @@ import com.eyecontrol.domain.usecase.DwellController
  */
 class TrackingForegroundService : LifecycleService() {
     companion object {
+        private const val GAZE_STALE_CHECK_MS = 250L
+        private const val GAZE_STALE_AFTER_MS = 750L
         private const val CHANNEL_ID = "newvision_tracking"
         private const val NOTIFICATION_ID = 1002
         const val EXTRA_CALIBRATION_MODE = "com.eyecontrol.extra.CALIBRATION_MODE"
@@ -137,7 +141,13 @@ class TrackingForegroundService : LifecycleService() {
     private fun startGazeControlLoop() {
         lifecycleScope.launch {
             TrackingRuntime.repository.latestScreenPoint().collectLatest { point ->
-                if (calibrationMode || point == null || point.isBlinking) return@collectLatest
+                if (calibrationMode) return@collectLatest
+                if (point == null || point.isBlinking) {
+                    OverlayCursorService.hide()
+                    zoneTracker.reset()
+                    dwellController.reset()
+                    return@collectLatest
+                }
                 OverlayCursorService.update(point)
                 val zone = zoneDetector.detect(point)
                 if (zone == null) {
@@ -148,6 +158,25 @@ class TrackingForegroundService : LifecycleService() {
                     if (zoneTracker.update(zone) is ZoneActivationResult.Activated) {
                         performZoneAction(zone)
                     }
+                }
+            }
+        }
+
+        // FaceLandmarker may stop emitting when the face/eyes disappear. Hide
+        // the last cursor and reset dwell/edge activation instead of leaving a
+        // stale position visible or ready to trigger an action.
+        lifecycleScope.launch {
+            while (isActive) {
+                delay(GAZE_STALE_CHECK_MS)
+                if (calibrationMode) continue
+                val point = TrackingRuntime.repository.latestScreenPoint().value
+                val pointUptimeMs = point?.timestampNs?.div(1_000_000L)
+                val stale = pointUptimeMs == null ||
+                    android.os.SystemClock.uptimeMillis() - pointUptimeMs > GAZE_STALE_AFTER_MS
+                if (stale || point?.isBlinking == true) {
+                    OverlayCursorService.hide()
+                    zoneTracker.reset()
+                    dwellController.reset()
                 }
             }
         }
