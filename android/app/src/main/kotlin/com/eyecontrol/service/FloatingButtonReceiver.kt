@@ -13,6 +13,7 @@ import android.widget.Toast
 import androidx.core.content.ContextCompat
 import com.eyecontrol.MainActivity
 import com.eyecontrol.data.camera.TrackingRuntime
+import com.eyecontrol.core.platform.ScreenGeometry
 
 class FloatingButtonReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
@@ -25,8 +26,9 @@ class FloatingButtonReceiver : BroadcastReceiver() {
             }
             FloatingButtonService.ACTION_TAP_CENTER -> {
                 if (!ensureAccessibility(context)) return
-                val x = context.resources.displayMetrics.widthPixels * 0.5f
-                val y = context.resources.displayMetrics.heightPixels * 0.5f
+                val metrics = ScreenGeometry.realMetrics(context)
+                val x = metrics.widthPixels * 0.5f
+                val y = metrics.heightPixels * 0.5f
                 if (!TouchAccessibilityService.performTap(x, y)) {
                     Toast.makeText(context, "تعذر تنفيذ النقرة؛ تحقق من خدمة إمكانية الوصول", Toast.LENGTH_SHORT).show()
                 }
