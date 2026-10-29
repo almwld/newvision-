@@ -172,11 +172,12 @@ class FloatingButtonService : Service() {
         })
         container.addView(button, FrameLayout.LayoutParams(buttonSize, buttonSize, Gravity.TOP or Gravity.LEFT))
 
-        val windowWidth = panelWidth
         params = WindowManager.LayoutParams(
-            windowWidth, buttonSize,
+            buttonSize, buttonSize,
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY else WindowManager.LayoutParams.TYPE_PHONE,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
+                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
             PixelFormat.TRANSLUCENT,
         ).apply {
             gravity = Gravity.TOP or Gravity.LEFT
@@ -185,6 +186,7 @@ class FloatingButtonService : Service() {
         }
 
         var menuOpenAbove = false
+        var dockedRight = false
         fun setMenuOpen(open: Boolean) {
             val p = params ?: return
             val buttonLayout = button.layoutParams as FrameLayout.LayoutParams
@@ -200,8 +202,19 @@ class FloatingButtonService : Service() {
                 actionScroll.layoutParams = (actionScroll.layoutParams as LinearLayout.LayoutParams).apply {
                     height = (maxActionsHeight * density).toInt()
                 }
+                p.width = buttonSize
                 p.height = buttonSize
+                if (dockedRight) {
+                    p.x = (ScreenGeometry.realMetrics(this).widthPixels - buttonSize).coerceAtLeast(0)
+                }
             } else {
+                val displayWidth = ScreenGeometry.realMetrics(this).widthPixels
+                p.width = panelWidth
+                p.x = if (dockedRight) {
+                    (displayWidth - panelWidth).coerceAtLeast(0)
+                } else {
+                    p.x.coerceIn(0, (displayWidth - panelWidth).coerceAtLeast(0))
+                }
                 val buttonScreenY = if (menuOpenAbove) p.y + buttonLayout.topMargin else p.y
                 val below = screenHeight - (buttonScreenY + buttonSize + gapPx)
                 val above = buttonScreenY - gapPx
@@ -290,8 +303,10 @@ class FloatingButtonService : Service() {
                         }
                     } else {
                         val metrics = resources.displayMetrics
-                        val rightSide = p.x + p.width / 2 > metrics.widthPixels / 2
-                        p.x = if (rightSide) (metrics.widthPixels - p.width).coerceAtLeast(0) else 0
+                        val rightSide = p.x + buttonSize / 2 > metrics.widthPixels / 2
+                        dockedRight = rightSide
+                        p.width = buttonSize
+                        p.x = if (rightSide) (metrics.widthPixels - buttonSize).coerceAtLeast(0) else 0
                         val buttonGravity = if (rightSide) Gravity.TOP or Gravity.RIGHT else Gravity.TOP or Gravity.LEFT
                         button.layoutParams = (button.layoutParams as FrameLayout.LayoutParams).apply {
                             gravity = buttonGravity
