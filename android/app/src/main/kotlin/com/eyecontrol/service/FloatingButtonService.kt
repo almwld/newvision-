@@ -19,6 +19,7 @@ import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.core.app.NotificationCompat
@@ -132,13 +133,22 @@ class FloatingButtonService : Service() {
             gravity = Gravity.CENTER
             setPadding(4, (3 * density).toInt(), 4, (9 * density).toInt())
         })
-        panel.addView(actionButton("تشغيل / إيقاف التتبع", ACTION_TOGGLE))
-        panel.addView(actionButton("نقرة في المنتصف", ACTION_TAP_CENTER))
-        panel.addView(actionButton("تمرير لأعلى", ACTION_SCROLL_UP))
-        panel.addView(actionButton("تمرير لأسفل", ACTION_SCROLL_DOWN))
-        panel.addView(actionButton("تمرير لليمين", ACTION_SCROLL_RIGHT))
-        panel.addView(actionButton("تمرير لليسار", ACTION_SCROLL_LEFT))
-        panel.addView(actionButton("إيقاف طارئ", ACTION_EMERGENCY, danger = true))
+        val actions = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        actions.addView(actionButton("تشغيل / إيقاف التتبع", ACTION_TOGGLE))
+        actions.addView(actionButton("نقرة في المنتصف", ACTION_TAP_CENTER))
+        actions.addView(actionButton("تمرير لأعلى", ACTION_SCROLL_UP))
+        actions.addView(actionButton("تمرير لأسفل", ACTION_SCROLL_DOWN))
+        actions.addView(actionButton("تمرير لليمين", ACTION_SCROLL_RIGHT))
+        actions.addView(actionButton("تمرير لليسار", ACTION_SCROLL_LEFT))
+        actions.addView(actionButton("إيقاف طارئ", ACTION_EMERGENCY, danger = true))
+        val metrics = resources.displayMetrics
+        val availableDp = metrics.heightPixels / density
+        val maxActionsHeight = (availableDp - 58f - 80f).coerceIn(160f, 350f)
+        panel.addView(ScrollView(this).apply {
+            isFillViewport = true
+            isVerticalScrollBarEnabled = false
+            addView(actions)
+        }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (maxActionsHeight * density).toInt()))
 
         container.addView(panel, FrameLayout.LayoutParams(panelWidth, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.TOP or Gravity.LEFT).apply {
             topMargin = buttonSize + (8 * density).toInt()
@@ -146,7 +156,9 @@ class FloatingButtonService : Service() {
         container.addView(button, FrameLayout.LayoutParams(buttonSize, buttonSize, Gravity.TOP or Gravity.LEFT))
 
         val windowWidth = panelWidth
-        val windowHeight = (buttonSize + 430 * density).toInt()
+        val screenHeight = resources.displayMetrics.heightPixels
+        val windowHeight = (buttonSize + (66 * density).toInt() + (maxOf(160f, (screenHeight / density - 58f - 80f).coerceAtMost(350f)) * density).toInt())
+            .coerceAtMost((screenHeight - (8 * density).toInt()).coerceAtLeast(buttonSize))
         params = WindowManager.LayoutParams(
             windowWidth, windowHeight,
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY else WindowManager.LayoutParams.TYPE_PHONE,
@@ -155,7 +167,7 @@ class FloatingButtonService : Service() {
         ).apply {
             gravity = Gravity.TOP or Gravity.LEFT
             x = (16 * density).toInt()
-            y = (resources.displayMetrics.heightPixels * 0.30f).toInt().coerceAtLeast((40 * density).toInt())
+            y = ((resources.displayMetrics.heightPixels - windowHeight) * 0.30f).toInt().coerceAtLeast(0)
         }
 
         button.setOnTouchListener(FloatingTouchListener(button, panel, container))
@@ -196,7 +208,7 @@ class FloatingButtonService : Service() {
                     if (dragging) {
                         val metrics = resources.displayMetrics
                         p.x = (initialX + dx.toInt()).coerceIn(0, (metrics.widthPixels - p.width).coerceAtLeast(0))
-                        p.y = (initialY + dy.toInt()).coerceIn(0, (metrics.heightPixels - buttonSize).coerceAtLeast(0))
+                        p.y = (initialY + dy.toInt()).coerceIn(0, (metrics.heightPixels - p.height).coerceAtLeast(0))
                         runCatching { windowManager.updateViewLayout(container, p) }
                     }
                     return true
