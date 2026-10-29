@@ -53,6 +53,9 @@ class NativeBridge {
   Future<bool> isFloatingButtonRunning() async =>
       await _methodChannel.invokeMethod<bool>('floating.isRunning') ?? false;
 
+  Future<bool> isCursorRunning() async =>
+      await _methodChannel.invokeMethod<bool>('cursor.isRunning') ?? false;
+
   Future<Map<String, dynamic>> getGazeZonesSettings() async {
     final value = await _methodChannel.invokeMethod<dynamic>('settings.getGazeZones');
     if (value is Map) return Map<String, dynamic>.from(value);
