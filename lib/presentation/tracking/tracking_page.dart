@@ -246,3 +246,4 @@ class TrackingPage extends StatelessWidget {
     if (ny > .65) return 'النظر إلى الأسفل';
     return 'النظر إلى المركز';
   }
+}
