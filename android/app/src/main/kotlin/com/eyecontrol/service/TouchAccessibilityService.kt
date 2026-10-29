@@ -5,6 +5,7 @@ import android.accessibilityservice.GestureDescription
 import android.graphics.Path
 import android.os.Build
 import android.view.accessibility.AccessibilityEvent
+import com.eyecontrol.core.platform.ScreenGeometry
 import java.util.concurrent.atomic.AtomicReference
 
 /**
@@ -53,7 +54,7 @@ class TouchAccessibilityService : AccessibilityService() {
 
     // Direction names match the physical gesture performed on the screen.
     fun scrollUp(): Boolean {
-        val metrics = resources.displayMetrics
+        val metrics = ScreenGeometry.realMetrics(this)
         val width = metrics.widthPixels.toFloat()
         val height = metrics.heightPixels.toFloat()
         return dispatchSwipe(width * 0.5f, height * 0.72f, width * 0.5f, height * 0.28f)
