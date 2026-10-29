@@ -213,8 +213,9 @@ class FloatingButtonService : Service() {
                         val metrics = resources.displayMetrics
                         val rightSide = p.x + p.width / 2 > metrics.widthPixels / 2
                         p.x = if (rightSide) (metrics.widthPixels - p.width).coerceAtLeast(0) else 0
+                        val buttonGravity = if (rightSide) Gravity.TOP or Gravity.RIGHT else Gravity.TOP or Gravity.LEFT
                         button.layoutParams = (button.layoutParams as FrameLayout.LayoutParams).apply {
-                            gravity = (Gravity.TOP or if (rightSide) Gravity.RIGHT else Gravity.LEFT)
+                            gravity = buttonGravity
                         }
                         (panel.layoutParams as FrameLayout.LayoutParams).apply {
                             gravity = Gravity.TOP or Gravity.LEFT
