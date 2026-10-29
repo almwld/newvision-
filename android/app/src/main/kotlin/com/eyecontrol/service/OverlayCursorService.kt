@@ -63,7 +63,12 @@ class OverlayCursorService : Service() {
 
     fun update(point: ScreenPoint) {
         if (point.isBlinking || !point.xPx.isFinite() || !point.yPx.isFinite()) return
+        cursor?.visibility = View.VISIBLE
         moveTo(point.xPx.toInt() - cursorSize / 2, point.yPx.toInt() - cursorSize / 2)
+    }
+
+    fun hide() {
+        cursor?.visibility = View.INVISIBLE
     }
 
     private fun moveTo(x: Int, y: Int) {
@@ -87,6 +92,10 @@ class OverlayCursorService : Service() {
         private val instance = AtomicReference<OverlayCursorService?>()
         fun update(point: ScreenPoint) {
             instance.get()?.update(point)
+        }
+
+        fun hide() {
+            instance.get()?.hide()
         }
     }
 }
