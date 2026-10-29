@@ -4,6 +4,7 @@ import android.content.Context
 import com.eyecontrol.data.repository.NativeGazeRepository
 import com.eyecontrol.data.repository.NativeCalibrationRepository
 import com.eyecontrol.data.repository.NativeGazeRepositoryFactory
+import com.eyecontrol.core.platform.ScreenGeometry
 
 /**
  * Process-local tracking runtime shared by the Activity and the foreground service.
@@ -16,13 +17,17 @@ object TrackingRuntime {
 
     @Synchronized
     fun initialize(context: Context) {
-        if (initialized) return
         val app = context.applicationContext
+        val metrics = ScreenGeometry.realMetrics(app)
+        if (initialized) {
+            repositoryValue.updateScreenSize(metrics.widthPixels, metrics.heightPixels)
+            return
+        }
         val factory = NativeGazeRepositoryFactory(app)
         calibrationRepositoryValue = factory.calibrationRepository()
         repositoryValue = factory.create(
-            screenWidth = app.resources.displayMetrics.widthPixels,
-            screenHeight = app.resources.displayMetrics.heightPixels,
+            screenWidth = metrics.widthPixels,
+            screenHeight = metrics.heightPixels,
         )
         initialized = true
     }

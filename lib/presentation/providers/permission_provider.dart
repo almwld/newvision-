@@ -6,9 +6,18 @@ class PermissionProvider extends ChangeNotifier with WidgetsBindingObserver {
   PermissionProvider({EyeControlPlatform? platform}) : _platform = platform ?? EyeControlPlatform() {
     WidgetsBinding.instance.addObserver(this);
   }
+
   final EyeControlPlatform _platform;
-  bool camera = false, overlay = false, accessibility = false, loading = false;
+  bool camera = false;
+  bool overlay = false;
+  bool accessibility = false;
+  bool notifications = true;
+  bool loading = false;
   String? error;
+
+  // Notifications are recommended for a transparent foreground service, but
+  // Android does not require POST_NOTIFICATIONS to start an FGS. Keep tracking
+  // available when users decline notification permission.
   bool get ready => camera && overlay && accessibility;
 
   @override
@@ -17,19 +26,45 @@ class PermissionProvider extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   Future<void> refresh() async {
-    loading = true; notifyListeners();
+    loading = true;
+    notifyListeners();
     try {
       camera = await Permission.camera.isGranted;
       overlay = await _platform.isOverlayGranted();
       accessibility = await _platform.isAccessibilityEnabled();
+      notifications = await Permission.notification.isGranted;
       error = null;
-    } catch (e) { error = e.toString(); }
-    loading = false; notifyListeners();
+    } catch (e) {
+      error = e.toString();
+    } finally {
+      loading = false;
+      notifyListeners();
+    }
   }
-  Future<void> requestCamera() async { await Permission.camera.request(); await refresh(); }
-  Future<void> requestOverlay() async { await _platform.requestOverlayPermission(); await refresh(); }
-  Future<void> requestAccessibility() async { await _platform.requestAccessibilitySettings(); await refresh(); }
+
+  Future<void> requestCamera() async {
+    await Permission.camera.request();
+    await refresh();
+  }
+
+  Future<void> requestNotifications() async {
+    await Permission.notification.request();
+    await refresh();
+  }
+
+  Future<void> requestOverlay() async {
+    await _platform.requestOverlayPermission();
+    await refresh();
+  }
+
+  Future<void> requestAccessibility() async {
+    await _platform.requestAccessibilitySettings();
+    await refresh();
+  }
 
   @override
-  void dispose() { WidgetsBinding.instance.removeObserver(this); super.dispose(); }
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
 }

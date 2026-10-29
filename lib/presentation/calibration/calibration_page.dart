@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../platform/eye_control_platform.dart';
 
 class CalibrationPage extends StatefulWidget {
@@ -14,10 +15,11 @@ class CalibrationPage extends StatefulWidget {
 class _CalibrationPageState extends State<CalibrationPage> {
   late final EyeControlPlatform _platform = widget._platform ?? EyeControlPlatform();
 
+  // Match Mudabbir's nine-point gaze calibration geometry.
   static const targets = <Offset>[
-    Offset(0.10, 0.10), Offset(0.50, 0.10), Offset(0.90, 0.10),
-    Offset(0.10, 0.50), Offset(0.50, 0.50), Offset(0.90, 0.50),
-    Offset(0.10, 0.90), Offset(0.50, 0.90), Offset(0.90, 0.90),
+    Offset(0.15, 0.22), Offset(0.50, 0.22), Offset(0.85, 0.22),
+    Offset(0.15, 0.50), Offset(0.50, 0.50), Offset(0.85, 0.50),
+    Offset(0.15, 0.78), Offset(0.50, 0.78), Offset(0.85, 0.78),
   ];
 
   int _index = -1;
@@ -27,7 +29,17 @@ class _CalibrationPageState extends State<CalibrationPage> {
   Timer? _timer;
   final List<Map<String, double>> _samples = [];
   final List<Map<String, double>> _current = [];
+  final List<Map<String, double>> _currentAngles = [];
   bool _reading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // The nine targets must cover the same coordinate space used by Android
+    // Accessibility gestures and the system-wide gaze cursor.
+    unawaited(SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky));
+  }
+
 
   Future<void> _start() async {
     setState(() {
@@ -38,7 +50,7 @@ class _CalibrationPageState extends State<CalibrationPage> {
     });
 
     try {
-      await _platform.startCamera();
+      await _platform.startCamera(forCalibration: true);
       await _captureTarget();
     } catch (error) {
       if (!mounted) return;
@@ -53,44 +65,71 @@ class _CalibrationPageState extends State<CalibrationPage> {
   Future<void> _captureTarget() async {
     if (!_running || _index < 0 || _index >= targets.length) return;
     _current.clear();
+    _currentAngles.clear();
     var ticks = 0;
     _timer?.cancel();
     _timer = Timer.periodic(const Duration(milliseconds: 50), (timer) async {
       if (_reading) return;
       _reading = true;
       ticks++;
-      final gaze = await _platform.latestGaze();
-      if (gaze != null && gaze['confidence'] is num && gaze['blinking'] != true) {
-        final confidence = (gaze['confidence'] as num).toDouble();
-        if (confidence >= 0.35 &&
-            gaze['leftIrisX'] is num &&
-            gaze['leftIrisY'] is num &&
-            gaze['rightIrisX'] is num &&
-            gaze['rightIrisY'] is num) {
-          _current.add({
-            'leftIrisX': (gaze['leftIrisX'] as num).toDouble(),
-            'leftIrisY': (gaze['leftIrisY'] as num).toDouble(),
-            'rightIrisX': (gaze['rightIrisX'] as num).toDouble(),
-            'rightIrisY': (gaze['rightIrisY'] as num).toDouble(),
-          });
+      try {
+        final gaze = await _platform.latestGaze();
+        if (gaze != null && gaze['confidence'] is num && gaze['blinking'] != true) {
+          final confidence = (gaze['confidence'] as num).toDouble();
+          if (confidence >= 0.35 &&
+              gaze['leftIrisX'] is num &&
+              gaze['leftIrisY'] is num &&
+              gaze['rightIrisX'] is num &&
+              gaze['rightIrisY'] is num) {
+            _current.add({
+              'leftIrisX': (gaze['leftIrisX'] as num).toDouble(),
+              'leftIrisY': (gaze['leftIrisY'] as num).toDouble(),
+              'rightIrisX': (gaze['rightIrisX'] as num).toDouble(),
+              'rightIrisY': (gaze['rightIrisY'] as num).toDouble(),
+            });
+            final yaw = gaze['yawDegrees'];
+            final pitch = gaze['pitchDegrees'];
+            if (yaw is num && pitch is num &&
+                yaw.toDouble().isFinite && pitch.toDouble().isFinite) {
+              _currentAngles.add({
+                'yawDegrees': yaw.toDouble(),
+                'pitchDegrees': pitch.toDouble(),
+              });
+            }
+          }
         }
+      } catch (error) {
+        _error = 'تعذر قراءة بيانات النظر أثناء المعايرة: $error';
+      } finally {
+        _reading = false;
       }
-      _reading = false;
 
       if (ticks >= 20) {
         timer.cancel();
         final point = targets[_index];
         if (_current.length >= 8) {
+          _error = null;
           double average(String key) =>
               _current.map((item) => item[key]!).reduce((a, b) => a + b) / _current.length;
-          _samples.add({
+          final sample = <String, double>{
             'leftIrisX': average('leftIrisX'),
             'leftIrisY': average('leftIrisY'),
             'rightIrisX': average('rightIrisX'),
             'rightIrisY': average('rightIrisY'),
             'targetX': point.dx,
             'targetY': point.dy,
-          });
+          };
+          // Prefer the same L2CS yaw/pitch calibration path used by the
+          // native inference pipeline when every target has enough stable
+          // angle samples; otherwise use the iris-feature calibration path.
+          if (_currentAngles.length >= 8) {
+            double averageAngle(String key) => _currentAngles
+                .map((item) => item[key]!)
+                .reduce((a, b) => a + b) / _currentAngles.length;
+            sample['yawDegrees'] = averageAngle('yawDegrees');
+            sample['pitchDegrees'] = averageAngle('pitchDegrees');
+          }
+          _samples.add(sample);
         } else {
           _error = 'لم يتم التقاط نظر ثابت. حاول مرة أخرى.';
           _running = false;
@@ -144,6 +183,10 @@ class _CalibrationPageState extends State<CalibrationPage> {
     if (_running) {
       unawaited(_platform.stopCamera());
     }
+    unawaited(SystemChrome.setEnabledSystemUIMode(
+      SystemUiMode.manual,
+      overlays: SystemUiOverlay.values,
+    ));
     super.dispose();
   }
 
@@ -151,9 +194,15 @@ class _CalibrationPageState extends State<CalibrationPage> {
   Widget build(BuildContext context) {
     final active = _index >= 0 && _index < targets.length;
     return Scaffold(
-      appBar: AppBar(title: const Text('معايرة التحكم بالعين')),
       body: Stack(
+        fit: StackFit.expand,
         children: [
+          const Positioned.fill(
+            child: AndroidView(viewType: 'com.eyecontrol/camera_preview'),
+          ),
+          const Positioned.fill(
+            child: ColoredBox(color: Color(0x660A1720)),
+          ),
           Positioned.fill(
             child: Padding(
               padding: const EdgeInsets.all(24),

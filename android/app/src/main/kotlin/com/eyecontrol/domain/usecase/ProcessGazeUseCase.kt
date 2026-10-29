@@ -8,10 +8,17 @@ import com.eyecontrol.domain.model.ScreenPoint
 class ProcessGazeUseCase(
     private val smoother: GazeSmoother,
     private val calibrationManager: CalibrationManager,
-    private val screenWidth: Int,
-    private val screenHeight: Int,
+    private var screenWidth: Int,
+    private var screenHeight: Int,
 ) {
     private var lastValidPoint: ScreenPoint? = null
+
+    fun updateScreenSize(width: Int, height: Int) {
+        require(width > 0 && height > 0) { "Screen dimensions must be positive." }
+        screenWidth = width
+        screenHeight = height
+    }
+
 
     fun process(sample: GazeSample): ScreenPoint? {
         if (!sample.eyeOpen) {
@@ -45,7 +52,9 @@ class ProcessGazeUseCase(
                 .coerceIn(0f, (screenWidth - 1).coerceAtLeast(0).toFloat()),
             yPx = (normalized.second.coerceIn(0f, 1f) * screenHeight)
                 .coerceIn(0f, (screenHeight - 1).coerceAtLeast(0).toFloat()),
-            confidence = (sample.gazeConfidence ?: sample.confidence).coerceIn(0f, 1f),
+            // L2CS peak probability is not a calibrated quality score. Match Mudabbir's
+            // interaction confidence to eye openness and bilateral consistency.
+            confidence = sample.confidence.coerceIn(0f, 1f),
             isBlinking = false,
             timestampNs = sample.timestampNs,
         )

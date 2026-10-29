@@ -6,7 +6,11 @@ class EyeControlPlatform {
 
   final MethodChannel _channel;
 
-  Future<void> startCamera() => _channel.invokeMethod<void>('camera.start');
+  Future<void> startCamera({bool forCalibration = false}) =>
+      _channel.invokeMethod<void>(
+        'camera.start',
+        <String, bool>{'forCalibration': forCalibration},
+      );
   Future<void> stopCamera() => _channel.invokeMethod<void>('camera.stop');
 
   Future<void> requestOverlayPermission() =>

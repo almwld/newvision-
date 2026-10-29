@@ -19,6 +19,7 @@ import com.google.mediapipe.tasks.vision.facelandmarker.FaceLandmarkerResult
 import java.nio.ByteBuffer
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.math.abs
 import kotlin.math.hypot
 import kotlin.math.min
 
@@ -29,7 +30,6 @@ class FaceLandmarkerAnalyzer(
     private val closed = AtomicBoolean(false)
     private val landmarker: FaceLandmarker
     private val blinkDetector = BlinkDetector()
-    private val irisNormalizer = IrisNormalizer()
     private val l2cs = L2csInferenceEngine(context)
     private val pendingFrames = ConcurrentHashMap<Long, Bitmap>()
 
@@ -92,24 +92,25 @@ class FaceLandmarkerAnalyzer(
         val leftIris = listOf(
             landmarks[468], landmarks[469], landmarks[470], landmarks[471], landmarks[472],
         )
-        val rightNormalized = irisNormalizer.normalize(
-            rightIris, landmarks[33] to landmarks[133],
-        )
-        val leftNormalized = irisNormalizer.normalize(
-            leftIris, landmarks[362] to landmarks[263],
-        )
-        if (rightNormalized == null || leftNormalized == null) return
-
         val rightEye = eyeContour(landmarks, intArrayOf(33, 160, 158, 133, 153, 144))
         val leftEye = eyeContour(landmarks, intArrayOf(362, 385, 387, 263, 373, 380))
         val blinking = blinkDetector.update(leftEye, rightEye)
 
-        val rawX = ((rightNormalized.first + leftNormalized.first) * 0.5f).coerceIn(0f, 1f)
-        val rawY = ((rightNormalized.second + leftNormalized.second) * 0.5f).coerceIn(0f, 1f)
-        val faceWidth = (landmarks.maxOf { it.x() } - landmarks.minOf { it.x() }).coerceAtLeast(0f)
-        val faceHeight = (landmarks.maxOf { it.y() } - landmarks.minOf { it.y() }).coerceAtLeast(0f)
-        val diagonal = hypot(faceWidth.toDouble(), faceHeight.toDouble()).toFloat()
-        val confidence = min(1f, diagonal * 1.5f).coerceIn(0.1f, 1f)
+        val rightRatio = eyeRatio(rightIris, rightEye, image.width, image.height) ?: return
+        val leftRatio = eyeRatio(leftIris, leftEye, image.width, image.height) ?: return
+        // Use the same eye-contour ratios as Mudabbir's GazeFusion pipeline.
+        // The horizontal inversion compensates for front-camera mirroring.
+        val rawX = (1f - (rightRatio.first + leftRatio.first) * 0.5f).coerceIn(0f, 1f)
+        val rawY = ((rightRatio.second + leftRatio.second) * 0.5f).coerceIn(0f, 1f)
+        // Score confidence from eye openness and left/right consistency, not
+        // merely the size of the face.
+        val leftOpenness = eyeOpenness(leftEye, image.width, image.height) ?: 0f
+        val rightOpenness = eyeOpenness(rightEye, image.width, image.height) ?: 0f
+        val opennessQuality = (min(leftOpenness, rightOpenness) / 0.22f).coerceIn(0f, 1f)
+        val symmetryError = abs(leftRatio.first - rightRatio.first) +
+            abs(leftRatio.second - rightRatio.second)
+        val symmetryQuality = (1f - symmetryError / 1.1f).coerceIn(0f, 1f)
+        val confidence = (opennessQuality * symmetryQuality).coerceIn(0f, 1f)
         val pupilDiameter = (irisDiameter(leftIris) + irisDiameter(rightIris)) * 0.5f
         val minX = landmarks.minOf { it.x() }.coerceIn(0f, 1f) * image.width.toFloat()
         val minY = landmarks.minOf { it.y() }.coerceIn(0f, 1f) * image.height.toFloat()
@@ -132,10 +133,10 @@ class FaceLandmarkerAnalyzer(
             GazeSample(
                 rawX = rawX,
                 rawY = rawY,
-                leftIrisX = leftNormalized.first,
-                leftIrisY = leftNormalized.second,
-                rightIrisX = rightNormalized.first,
-                rightIrisY = rightNormalized.second,
+                leftIrisX = leftRatio.first,
+                leftIrisY = leftRatio.second,
+                rightIrisX = rightRatio.first,
+                rightIrisY = rightRatio.second,
                 confidence = confidence,
                 pupilDiameter = pupilDiameter,
                 eyeOpen = !blinking,
@@ -188,6 +189,45 @@ class FaceLandmarkerAnalyzer(
         landmarks: List<NormalizedLandmark>,
         indices: IntArray,
     ): List<NormalizedLandmark> = indices.map { landmarks[it] }
+
+    private fun eyeRatio(
+        iris: List<NormalizedLandmark>,
+        contour: List<NormalizedLandmark>,
+        imageWidth: Int,
+        imageHeight: Int,
+    ): Pair<Float, Float>? {
+        if (iris.isEmpty() || contour.size < 6 || imageWidth <= 0 || imageHeight <= 0) return null
+        val minX = contour.minOf { it.x() } * imageWidth
+        val maxX = contour.maxOf { it.x() } * imageWidth
+        val minY = contour.minOf { it.y() } * imageHeight
+        val maxY = contour.maxOf { it.y() } * imageHeight
+        val width = maxX - minX
+        val height = maxY - minY
+        if (!width.isFinite() || !height.isFinite() || width < 2f || height < 1f) return null
+        val irisCenter = iris.first()
+        val irisX = irisCenter.x() * imageWidth
+        val irisY = irisCenter.y() * imageHeight
+        return Pair(
+            ((irisX - minX) / width).coerceIn(0f, 1f),
+            ((irisY - minY) / height).coerceIn(0f, 1f),
+        )
+    }
+
+    private fun eyeOpenness(
+        contour: List<NormalizedLandmark>,
+        imageWidth: Int,
+        imageHeight: Int,
+    ): Float? {
+        if (contour.size < 6 || imageWidth <= 0 || imageHeight <= 0) return null
+        val minX = contour.minOf { it.x() } * imageWidth
+        val maxX = contour.maxOf { it.x() } * imageWidth
+        val minY = contour.minOf { it.y() } * imageHeight
+        val maxY = contour.maxOf { it.y() } * imageHeight
+        val width = maxX - minX
+        val height = maxY - minY
+        if (!width.isFinite() || !height.isFinite() || width < 2f || height < 1f) return null
+        return (height / width).takeIf { it.isFinite() }
+    }
 
     override fun close() {
         if (closed.compareAndSet(false, true)) {

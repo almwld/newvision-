@@ -26,6 +26,24 @@ class NativeBridge {
   Future<void> startCamera() => _methodChannel.invokeMethod<void>('camera.start');
   Future<void> stopCamera() => _methodChannel.invokeMethod<void>('camera.stop');
 
+  Future<bool> isTrackingRunning() async =>
+      await _methodChannel.invokeMethod<bool>('tracking.isRunning') ?? false;
+
+  Future<({int width, int height})> screenSize() async {
+    final value = await _methodChannel.invokeMethod<dynamic>('screen.size');
+    if (value is! Map) {
+      throw StateError('Native physical screen size is unavailable.');
+    }
+    return (
+      width: (value['width'] as num).toInt(),
+      height: (value['height'] as num).toInt(),
+    );
+  }
+
+
+  Future<bool> isCalibrationReady() async =>
+      await _methodChannel.invokeMethod<bool>('calibration.isReady') ?? false;
+
   Future<bool> showFloatingButton() async =>
       await _methodChannel.invokeMethod<bool>('floating.show') ?? false;
 
@@ -34,6 +52,9 @@ class NativeBridge {
 
   Future<bool> isFloatingButtonRunning() async =>
       await _methodChannel.invokeMethod<bool>('floating.isRunning') ?? false;
+
+  Future<bool> isCursorRunning() async =>
+      await _methodChannel.invokeMethod<bool>('cursor.isRunning') ?? false;
 
   Future<Map<String, dynamic>> getGazeZonesSettings() async {
     final value = await _methodChannel.invokeMethod<dynamic>('settings.getGazeZones');

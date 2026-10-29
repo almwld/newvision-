@@ -3,23 +3,34 @@ package com.eyecontrol.service
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.Manifest
 import android.app.Service
+import android.content.ComponentName
+import android.content.pm.PackageManager
+import android.provider.Settings
+import android.view.accessibility.AccessibilityManager
+import android.accessibilityservice.AccessibilityServiceInfo
 import android.content.Intent
+import android.content.res.Configuration
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleService
 import androidx.lifecycle.lifecycleScope
 import com.eyecontrol.MainActivity
 import com.eyecontrol.R
 import com.eyecontrol.data.camera.CameraController
 import com.eyecontrol.data.camera.TrackingRuntime
+import com.eyecontrol.core.platform.ScreenGeometry
 import com.eyecontrol.core.constants.NativeConstants
 import com.eyecontrol.data.settings.GazeZoneDetector
 import com.eyecontrol.data.settings.GazeZoneSettings
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import com.eyecontrol.data.settings.GazeZone
 import com.eyecontrol.data.settings.SettingsStorage
 import com.eyecontrol.data.settings.ZoneActivationResult
@@ -31,8 +42,12 @@ import com.eyecontrol.domain.usecase.DwellController
  */
 class TrackingForegroundService : LifecycleService() {
     companion object {
+        private const val GAZE_STALE_CHECK_MS = 250L
+        private const val GAZE_STALE_AFTER_MS = 750L
+        private const val MIN_CONTROL_CONFIDENCE = 0.45f
         private const val CHANNEL_ID = "newvision_tracking"
         private const val NOTIFICATION_ID = 1002
+        const val EXTRA_CALIBRATION_MODE = "com.eyecontrol.extra.CALIBRATION_MODE"
 
         @Volatile
         var isRunning: Boolean = false
@@ -40,7 +55,11 @@ class TrackingForegroundService : LifecycleService() {
     }
 
     private var cameraController: CameraController? = null
+    private var cameraStarted = false
+    @Volatile private var calibrationMode = false
+    private var gazeControlLoopStarted = false
     private lateinit var settingsStorage: SettingsStorage
+    private lateinit var sharedPreferences: android.content.SharedPreferences
     private lateinit var zoneDetector: GazeZoneDetector
     private lateinit var zoneTracker: ZoneActivationTracker
     private lateinit var dwellController: DwellController
@@ -50,15 +69,21 @@ class TrackingForegroundService : LifecycleService() {
 
     override fun onCreate() {
         super.onCreate()
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+            com.eyecontrol.core.logging.AppLogger.e("Tracking service not started: camera permission is missing")
+            stopSelf()
+            return
+        }
         isRunning = true
         TrackingRuntime.initialize(this)
         createChannel()
         startAsForeground()
-        settingsStorage = SettingsStorage(getSharedPreferences("newvision", MODE_PRIVATE))
+        sharedPreferences = getSharedPreferences("newvision", MODE_PRIVATE)
+        settingsStorage = SettingsStorage(sharedPreferences)
         currentSettings = settingsStorage.load()
         zoneDetector = GazeZoneDetector(
-            resources.displayMetrics.widthPixels,
-            resources.displayMetrics.heightPixels,
+            ScreenGeometry.realMetrics(this).widthPixels,
+            ScreenGeometry.realMetrics(this).heightPixels,
         ) { currentSettings }
         zoneTracker = ZoneActivationTracker(currentSettings.activationMs, currentSettings.cooldownMs)
         hapticFeedback = HapticFeedback(this)
@@ -75,13 +100,8 @@ class TrackingForegroundService : LifecycleService() {
                 NativeConstants.DWELL_RADIUS_PX,
             )
         }
-        settingsStorage.registerOnSharedPreferenceChangeListener(preferencesListener)
+        sharedPreferences.registerOnSharedPreferenceChangeListener(preferencesListener)
         cameraController = CameraController(this, this, TrackingRuntime.repository)
-        cameraController?.start()
-        startGazeControlLoop()
-        if (android.provider.Settings.canDrawOverlays(this)) {
-            startService(Intent(this, OverlayCursorService::class.java))
-        }
     }
 
     private fun startAsForeground() {
@@ -136,7 +156,13 @@ class TrackingForegroundService : LifecycleService() {
     private fun startGazeControlLoop() {
         lifecycleScope.launch {
             TrackingRuntime.repository.latestScreenPoint().collectLatest { point ->
-                if (point == null || point.isBlinking) return@collectLatest
+                if (calibrationMode) return@collectLatest
+                if (point == null || point.isBlinking || point.confidence < MIN_CONTROL_CONFIDENCE) {
+                    OverlayCursorService.hide()
+                    zoneTracker.reset()
+                    dwellController.reset()
+                    return@collectLatest
+                }
                 OverlayCursorService.update(point)
                 val zone = zoneDetector.detect(point)
                 if (zone == null) {
@@ -147,6 +173,26 @@ class TrackingForegroundService : LifecycleService() {
                     if (zoneTracker.update(zone) is ZoneActivationResult.Activated) {
                         performZoneAction(zone)
                     }
+                }
+            }
+        }
+
+        // FaceLandmarker may stop emitting when the face/eyes disappear. Hide
+        // the last cursor and reset dwell/edge activation instead of leaving a
+        // stale position visible or ready to trigger an action.
+        lifecycleScope.launch {
+            while (isActive) {
+                delay(GAZE_STALE_CHECK_MS)
+                if (calibrationMode) continue
+                val point = TrackingRuntime.repository.latestScreenPoint().value
+                val pointUptimeMs = point?.timestampNs?.div(1_000_000L)
+                val stale = pointUptimeMs == null ||
+                    android.os.SystemClock.uptimeMillis() - pointUptimeMs > GAZE_STALE_AFTER_MS
+                if (stale || point?.isBlinking == true ||
+                    (point != null && point.confidence < MIN_CONTROL_CONFIDENCE)) {
+                    OverlayCursorService.hide()
+                    zoneTracker.reset()
+                    dwellController.reset()
                 }
             }
         }
@@ -172,7 +218,9 @@ class TrackingForegroundService : LifecycleService() {
     }
 
     override fun onDestroy() {
-        settingsStorage.unregisterOnSharedPreferenceChangeListener(preferencesListener)
+        if (::sharedPreferences.isInitialized && ::preferencesListener.isInitialized) {
+            sharedPreferences.unregisterOnSharedPreferenceChangeListener(preferencesListener)
+        }
         cameraController?.close()
         cameraController = null
         TrackingRuntime.reset()
@@ -182,7 +230,66 @@ class TrackingForegroundService : LifecycleService() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        val requestedCalibration = intent?.getBooleanExtra(EXTRA_CALIBRATION_MODE, false) ?: false
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+            com.eyecontrol.core.logging.AppLogger.e("Tracking service stopped: camera permission is missing")
+            stopSelf(startId)
+            return START_NOT_STICKY
+        }
+        if (!requestedCalibration) {
+            if (!Settings.canDrawOverlays(this) || !isAccessibilityEnabled() ||
+                !TrackingRuntime.calibrationRepository.hasActiveModel()
+            ) {
+                com.eyecontrol.core.logging.AppLogger.e(
+                    "Tracking service stopped: overlay, accessibility, or calibration is unavailable",
+                )
+                stopSelf(startId)
+                return START_NOT_STICKY
+            }
+        }
+
+        calibrationMode = requestedCalibration
+        if (calibrationMode) {
+            stopService(Intent(this, OverlayCursorService::class.java))
+        } else {
+            runCatching { startService(Intent(this, OverlayCursorService::class.java)) }
+                .onFailure { error ->
+                    com.eyecontrol.core.logging.AppLogger.e("Unable to start gaze cursor overlay", error)
+                }
+            if (!gazeControlLoopStarted) {
+                gazeControlLoopStarted = true
+                startGazeControlLoop()
+            }
+        }
+
+        if (!cameraStarted) {
+            cameraStarted = true
+            cameraController?.start()
+        }
         return Service.START_STICKY
+    }
+
+    private fun isAccessibilityEnabled(): Boolean {
+        val manager = getSystemService(AccessibilityManager::class.java) ?: return false
+        val expected = ComponentName(this, TouchAccessibilityService::class.java)
+        return manager.getEnabledAccessibilityServiceList(AccessibilityServiceInfo.FEEDBACK_ALL_MASK)
+            .any { service ->
+                val info = service.resolveInfo.serviceInfo
+                ComponentName(info.packageName, info.name) == expected
+            }
+    }
+
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        if (!::currentSettings.isInitialized || !::zoneTracker.isInitialized || !::dwellController.isInitialized) {
+            return
+        }
+        TrackingRuntime.initialize(this)
+        val metrics = ScreenGeometry.realMetrics(this)
+        zoneDetector = GazeZoneDetector(metrics.widthPixels, metrics.heightPixels) { currentSettings }
+        zoneTracker.reset()
+        dwellController.reset()
+        OverlayCursorService.hide()
     }
 
     override fun onBind(intent: Intent): IBinder? = super.onBind(intent)

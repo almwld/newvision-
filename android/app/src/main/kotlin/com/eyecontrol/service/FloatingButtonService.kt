@@ -5,7 +5,9 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
 import android.content.Intent
+import android.content.res.Configuration
 import android.graphics.PixelFormat
+import android.graphics.drawable.GradientDrawable
 import android.os.Build
 import android.os.IBinder
 import android.provider.Settings
@@ -14,16 +16,20 @@ import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
-import android.graphics.drawable.GradientDrawable
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.ScrollView
 import android.widget.TextView
+import android.widget.Toast
 import androidx.core.app.NotificationCompat
 import com.eyecontrol.MainActivity
+import com.eyecontrol.core.platform.ScreenGeometry
 import com.eyecontrol.R
 
+/** Persistent, movable eye-control button. It deliberately lives in a system overlay,
+ * so the same controls remain available after the user leaves NewVision. */
 class FloatingButtonService : Service() {
     companion object {
         private const val TAG = "FloatingBtn"
@@ -34,6 +40,8 @@ class FloatingButtonService : Service() {
         const val ACTION_TAP_CENTER = "com.eyecontrol.TAP_CENTER"
         const val ACTION_SCROLL_UP = "com.eyecontrol.SCROLL_UP"
         const val ACTION_SCROLL_DOWN = "com.eyecontrol.SCROLL_DOWN"
+        const val ACTION_SCROLL_LEFT = "com.eyecontrol.SCROLL_LEFT"
+        const val ACTION_SCROLL_RIGHT = "com.eyecontrol.SCROLL_RIGHT"
 
         @Volatile var isRunning = false
             private set
@@ -41,141 +49,245 @@ class FloatingButtonService : Service() {
 
     private lateinit var windowManager: WindowManager
     private var floatingView: View? = null
+    private var buttonView: ImageView? = null
+    private var panelView: LinearLayout? = null
     private var params: WindowManager.LayoutParams? = null
+    private var closeActionMenu: (() -> Unit)? = null
+    private var density = 1f
+    private var buttonSize = 60
+    private var dockedRight = false
 
     override fun onCreate() {
         super.onCreate()
-        Log.d(TAG, "onCreate")
         isRunning = true
         createChannel()
         startForegroundCompat()
-
         if (!Settings.canDrawOverlays(this)) {
             Log.w(TAG, "Overlay permission missing")
+            Toast.makeText(this, "اسمح لـ NewVision بالظهور فوق التطبيقات أولاً", Toast.LENGTH_LONG).show()
             stopSelf()
             return
         }
-        addFloatingButton()
+        runCatching { addFloatingButton() }
+            .onFailure { error ->
+                Log.e(TAG, "Unable to attach floating action control", error)
+                stopSelf()
+            }
     }
 
     private fun startForegroundCompat() {
         val notification = buildNotification()
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             startForeground(NOTIF_ID, notification, android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
         } else {
+            // SPECIAL_USE foreground-service types are only supported on Android 14+.
             startForeground(NOTIF_ID, notification)
         }
     }
 
     private fun addFloatingButton() {
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
-        val density = resources.displayMetrics.density
-        val size = (60 * density).toInt()
-
+        density = ScreenGeometry.realMetrics(this).density
+        buttonSize = (58 * density).toInt()
+        val panelWidth = (232 * density).toInt()
         val container = FrameLayout(this)
-        val imageView = ImageView(this).apply {
+
+        val button = ImageView(this).apply {
             setImageResource(R.drawable.ic_eye)
             setBackgroundResource(R.drawable.floating_button_bg)
-            setPadding((15 * density).toInt(), (15 * density).toInt(), (15 * density).toInt(), (15 * density).toInt())
-            contentDescription = "تحكم NewVision"
+            setPadding((14 * density).toInt(), (14 * density).toInt(), (14 * density).toInt(), (14 * density).toInt())
+            contentDescription = "قائمة إجراءات NewVision"
             isClickable = true
+            isFocusable = true
+            elevation = 12f * density
         }
-
         val panel = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding((8 * density).toInt(), (8 * density).toInt(), (8 * density).toInt(), (8 * density).toInt())
+            setPadding((9 * density).toInt(), (9 * density).toInt(), (9 * density).toInt(), (9 * density).toInt())
             background = GradientDrawable().apply {
-                setColor(0xF2FFFFFF.toInt())
-                cornerRadius = 18f * density
-                setStroke((1 * density).toInt(), 0x330A8F83)
+                setColor(0xF51E293B.toInt())
+                cornerRadius = 20f * density
+                setStroke((1.2f * density).toInt(), 0xFF0A8F83.toInt())
             }
             visibility = View.GONE
-            elevation = 10f * density
+            elevation = 14f * density
         }
 
-        fun actionButton(label: String, action: String): TextView {
-            return TextView(this).apply {
+        var menuController: ((Boolean) -> Unit)? = null
+
+        fun actionButton(label: String, action: String, danger: Boolean = false): TextView =
+            TextView(this).apply {
                 text = label
-                textSize = 13f
-                setTextColor(0xFF263238.toInt())
+                textSize = 14f
+                setTextColor(if (danger) 0xFFFFD8D8.toInt() else 0xFFFFFFFF.toInt())
                 gravity = Gravity.CENTER
-                setPadding((14 * density).toInt(), (9 * density).toInt(), (14 * density).toInt(), (9 * density).toInt())
+                minHeight = (42 * density).toInt()
+                setPadding((12 * density).toInt(), (9 * density).toInt(), (12 * density).toInt(), (9 * density).toInt())
                 isClickable = true
+                isFocusable = true
                 background = GradientDrawable().apply {
-                    setColor(0xFFF4F6F7.toInt())
-                    cornerRadius = 12f * density
+                    setColor(if (danger) 0xFF6B2630.toInt() else 0xFF334155.toInt())
+                    cornerRadius = 13f * density
+                    setStroke((1 * density).toInt(), if (danger) 0x66FF8080 else 0x440A8F83)
                 }
                 setOnClickListener {
                     sendBroadcast(Intent(action).setPackage(packageName))
-                    panel.visibility = View.GONE
+                    menuController?.invoke(false)
                 }
-                layoutParams = LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.WRAP_CONTENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT,
-                ).apply {
-                    bottomMargin = (5 * density).toInt()
+                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                    bottomMargin = (6 * density).toInt()
                 }
             }
+
+        panel.addView(TextView(this).apply {
+            text = "التحكم بالنظر"
+            textSize = 14f
+            setTextColor(0xFF7DE0D4.toInt())
+            gravity = Gravity.CENTER
+            setPadding(4, (3 * density).toInt(), 4, (9 * density).toInt())
+        })
+        val actions = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        actions.addView(actionButton("تشغيل / إيقاف التتبع", ACTION_TOGGLE))
+        actions.addView(actionButton("نقرة في المنتصف", ACTION_TAP_CENTER))
+        actions.addView(actionButton("تمرير لأعلى", ACTION_SCROLL_UP))
+        actions.addView(actionButton("تمرير لأسفل", ACTION_SCROLL_DOWN))
+        actions.addView(actionButton("تمرير لليمين", ACTION_SCROLL_RIGHT))
+        actions.addView(actionButton("تمرير لليسار", ACTION_SCROLL_LEFT))
+        actions.addView(actionButton("إيقاف طارئ", ACTION_EMERGENCY, danger = true))
+        val metrics = ScreenGeometry.realMetrics(this)
+        val screenHeight = metrics.heightPixels
+        val availableDp = screenHeight / density
+        val maxActionsHeight = (availableDp - 58f - 80f).coerceIn(100f, 350f)
+        val actionScroll = ScrollView(this).apply {
+            isFillViewport = true
+            isVerticalScrollBarEnabled = false
+            addView(actions)
         }
-
-        panel.addView(actionButton("تشغيل / إيقاف التتبع", ACTION_TOGGLE))
-        panel.addView(actionButton("نقرة سريعة", ACTION_TAP_CENTER))
-        panel.addView(actionButton("تمرير لأعلى", ACTION_SCROLL_UP))
-        panel.addView(actionButton("تمرير لأسفل", ACTION_SCROLL_DOWN))
-        panel.addView(actionButton("إيقاف طارئ", ACTION_EMERGENCY))
-
-        container.addView(
-            panel,
-            FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                Gravity.TOP or Gravity.START,
-            ).apply {
-                leftMargin = 0
-                topMargin = size + (8 * density).toInt()
-            },
+        panel.addView(
+            actionScroll,
+            LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                (maxActionsHeight * density).toInt(),
+            ),
         )
-        container.addView(
-            imageView,
-            FrameLayout.LayoutParams(size, size, Gravity.TOP or Gravity.START),
-        )
+
+        val gapPx = (8 * density).toInt()
+        val panelChromePx = (62 * density).toInt()
+        val desiredPanelHeightPx = (maxActionsHeight * density).toInt() + panelChromePx
+        container.addView(panel, FrameLayout.LayoutParams(panelWidth, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.TOP or Gravity.LEFT).apply {
+            topMargin = buttonSize + gapPx
+        })
+        container.addView(button, FrameLayout.LayoutParams(buttonSize, buttonSize, Gravity.TOP or Gravity.LEFT))
 
         params = WindowManager.LayoutParams(
-            (240 * density).toInt(),
-            (size + 300 * density).toInt(),
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
-                WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
-            else
-                WindowManager.LayoutParams.TYPE_PHONE,
+            buttonSize, buttonSize,
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY else WindowManager.LayoutParams.TYPE_PHONE,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
                 WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
             PixelFormat.TRANSLUCENT,
         ).apply {
-            gravity = Gravity.TOP or Gravity.START
-            x = 24
-            y = 300
+            gravity = Gravity.TOP or Gravity.LEFT
+            x = (16 * density).toInt()
+            y = ((screenHeight - buttonSize) * 0.30f).toInt().coerceAtLeast(0)
         }
 
-        imageView.setOnTouchListener(FloatingTouchListener(panel))
+        var menuOpenAbove = false
+        var menuAnchorY = 0
+        fun setMenuOpen(open: Boolean) {
+            val p = params ?: return
+            val buttonLayout = button.layoutParams as FrameLayout.LayoutParams
+            val panelLayout = panel.layoutParams as FrameLayout.LayoutParams
+            if (!open) {
+                if (panel.visibility == View.VISIBLE) {
+                    val displayHeight = ScreenGeometry.realMetrics(this).heightPixels
+                    p.y = menuAnchorY.coerceIn(0, (displayHeight - buttonSize).coerceAtLeast(0))
+                }
+                panel.visibility = View.GONE
+                menuOpenAbove = false
+                buttonLayout.topMargin = 0
+                panelLayout.topMargin = buttonSize + gapPx
+                actionScroll.layoutParams = (actionScroll.layoutParams as LinearLayout.LayoutParams).apply {
+                    height = (maxActionsHeight * density).toInt()
+                }
+                p.width = buttonSize
+                p.height = buttonSize
+                if (dockedRight) {
+                    p.x = (ScreenGeometry.realMetrics(this).widthPixels - buttonSize).coerceAtLeast(0)
+                }
+            } else {
+                val displayWidth = ScreenGeometry.realMetrics(this).widthPixels
+                p.width = panelWidth
+                p.x = if (dockedRight) {
+                    (displayWidth - panelWidth).coerceAtLeast(0)
+                } else {
+                    p.x.coerceIn(0, (displayWidth - panelWidth).coerceAtLeast(0))
+                }
+                val buttonScreenY = if (menuOpenAbove) p.y + buttonLayout.topMargin else p.y
+                menuAnchorY = buttonScreenY
+                val displayHeight = ScreenGeometry.realMetrics(this).heightPixels
+                val below = displayHeight - (buttonScreenY + buttonSize + gapPx)
+                val above = buttonScreenY - gapPx
+                val openAbove = below < desiredPanelHeightPx && above > below
+                val available = if (openAbove) above else below
+                val panelHeight = desiredPanelHeightPx.coerceAtMost(
+                    available.coerceAtLeast((100 * density).toInt()),
+                )
+                val scrollHeight = (panelHeight - panelChromePx).coerceAtLeast((60 * density).toInt())
+                actionScroll.layoutParams = (actionScroll.layoutParams as LinearLayout.LayoutParams).apply {
+                    height = scrollHeight
+                }
+                menuOpenAbove = openAbove
+                panel.visibility = View.VISIBLE
+                if (openAbove) {
+                    panelLayout.topMargin = 0
+                    buttonLayout.topMargin = panelHeight + gapPx
+                    p.y = (buttonScreenY - panelHeight - gapPx).coerceAtLeast(0)
+                } else {
+                    panelLayout.topMargin = buttonSize + gapPx
+                    buttonLayout.topMargin = 0
+                    p.y = buttonScreenY.coerceAtMost(
+                        (displayHeight - buttonSize - gapPx - panelHeight).coerceAtLeast(0),
+                    )
+                }
+                p.height = buttonSize + gapPx + panelHeight
+            }
+            button.layoutParams = buttonLayout
+            panel.layoutParams = panelLayout
+            runCatching { windowManager.updateViewLayout(container, p) }
+        }
+
+        menuController = { open -> setMenuOpen(open) }
+        closeActionMenu = { setMenuOpen(false) }
+        button.setOnTouchListener(FloatingTouchListener(button, panel, container) { setMenuOpen(it) })
         windowManager.addView(container, params)
         floatingView = container
-        Log.d(TAG, "Floating control added")
+        buttonView = button
+        panelView = panel
     }
 
-    private inner class FloatingTouchListener(private val panel: View) : View.OnTouchListener {
-        private var initX = 0
-        private var initY = 0
+    private inner class FloatingTouchListener(
+        private val button: ImageView,
+        private val panel: LinearLayout,
+        private val container: View,
+        private val setMenuOpen: (Boolean) -> Unit,
+    ) : View.OnTouchListener {
+        private var initialX = 0
+        private var initialY = 0
         private var touchX = 0f
         private var touchY = 0f
         private var dragging = false
+        private var menuWasOpenOnDown = false
         private var downTime = 0L
 
         override fun onTouch(v: View, event: MotionEvent): Boolean {
             val p = params ?: return false
             when (event.actionMasked) {
                 MotionEvent.ACTION_DOWN -> {
-                    initX = p.x
-                    initY = p.y
+                    menuWasOpenOnDown = panel.visibility == View.VISIBLE
+                    if (menuWasOpenOnDown) setMenuOpen(false)
+                    initialX = p.x
+                    initialY = p.y
                     touchX = event.rawX
                     touchY = event.rawY
                     dragging = false
@@ -185,28 +297,42 @@ class FloatingButtonService : Service() {
                 MotionEvent.ACTION_MOVE -> {
                     val dx = event.rawX - touchX
                     val dy = event.rawY - touchY
-                    if (kotlin.math.abs(dx) > 10 || kotlin.math.abs(dy) > 10) dragging = true
+                    if (kotlin.math.abs(dx) > 9 * density || kotlin.math.abs(dy) > 9 * density) dragging = true
                     if (dragging) {
-                        p.x = initX + dx.toInt()
-                        p.y = initY + dy.toInt()
-                        windowManager.updateViewLayout(v, p)
+                        val metrics = ScreenGeometry.realMetrics(this@FloatingButtonService)
+                        p.x = (initialX + dx.toInt()).coerceIn(0, (metrics.widthPixels - p.width).coerceAtLeast(0))
+                        p.y = (initialY + dy.toInt()).coerceIn(0, (metrics.heightPixels - p.height).coerceAtLeast(0))
+                        runCatching { windowManager.updateViewLayout(container, p) }
                     }
                     return true
                 }
                 MotionEvent.ACTION_UP -> {
                     val elapsed = System.currentTimeMillis() - downTime
                     if (!dragging) {
-                        if (elapsed > 800) {
-                            Log.d(TAG, "Emergency stop")
+                        if (elapsed > 850) {
                             sendBroadcast(Intent(ACTION_EMERGENCY).setPackage(packageName))
                         } else {
-                            panel.visibility = if (panel.visibility == View.VISIBLE) View.GONE else View.VISIBLE
-                            Log.d(TAG, "Control panel toggled")
+                            // Toggle from the state at touch-down. Closing the panel on ACTION_DOWN
+                            // must not make ACTION_UP reopen it immediately.
+                            setMenuOpen(!menuWasOpenOnDown)
                         }
                     } else {
-                        val screenWidth = resources.displayMetrics.widthPixels
-                        p.x = if (p.x > screenWidth / 2) screenWidth - v.width else 0
-                        windowManager.updateViewLayout(v, p)
+                        val metrics = ScreenGeometry.realMetrics(this@FloatingButtonService)
+                        val rightSide = p.x + buttonSize / 2 > metrics.widthPixels / 2
+                        dockedRight = rightSide
+                        p.width = buttonSize
+                        p.x = if (rightSide) (metrics.widthPixels - buttonSize).coerceAtLeast(0) else 0
+                        val buttonGravity = if (rightSide) Gravity.TOP or Gravity.RIGHT else Gravity.TOP or Gravity.LEFT
+                        button.layoutParams = (button.layoutParams as FrameLayout.LayoutParams).apply {
+                            gravity = buttonGravity
+                        }
+                        // Keep the action panel inside the display: open it inward from the
+                        // edge where the floating button was docked.
+                        (panel.layoutParams as FrameLayout.LayoutParams).apply {
+                            gravity = if (rightSide) (Gravity.TOP or Gravity.RIGHT) else (Gravity.TOP or Gravity.LEFT)
+                            topMargin = buttonSize + (8 * density).toInt()
+                        }
+                        runCatching { windowManager.updateViewLayout(container, p) }
                     }
                     return true
                 }
@@ -218,12 +344,8 @@ class FloatingButtonService : Service() {
     private fun createChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             getSystemService(NotificationManager::class.java).createNotificationChannel(
-                NotificationChannel(
-                    CHANNEL_ID,
-                    "NewVision Floating Control",
-                    NotificationManager.IMPORTANCE_LOW,
-                ).apply {
-                    description = "زر عائم للتحكم بتتبع العين"
+                NotificationChannel(CHANNEL_ID, "NewVision Floating Control", NotificationManager.IMPORTANCE_LOW).apply {
+                    description = "زر عائم للتحكم بتتبع العين خارج التطبيق"
                 },
             )
         }
@@ -233,34 +355,38 @@ class FloatingButtonService : Service() {
         val intent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
         }
-        val pending = android.app.PendingIntent.getActivity(
-            this,
-            0,
-            intent,
-            android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT,
-        )
+        val pending = android.app.PendingIntent.getActivity(this, 0, intent,
+            android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT)
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_eye)
             .setContentTitle("NewVision نشط")
-            .setContentText("الزر العائم متاح فوق التطبيقات")
+            .setContentText("زر التحكم العائم متاح فوق التطبيقات")
             .setContentIntent(pending)
             .setOngoing(true)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .build()
     }
 
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        val p = params ?: return
+        closeActionMenu?.invoke()
+        val metrics = ScreenGeometry.realMetrics(this)
+        p.x = p.x.coerceIn(0, (metrics.widthPixels - p.width).coerceAtLeast(0))
+        p.y = p.y.coerceIn(0, (metrics.heightPixels - p.height).coerceAtLeast(0))
+        floatingView?.let { view -> runCatching { windowManager.updateViewLayout(view, p) } }
+    }
+
     override fun onDestroy() {
-        Log.d(TAG, "onDestroy")
         isRunning = false
-        floatingView?.let {
-            runCatching { windowManager.removeView(it) }
-        }
+        floatingView?.let { view -> runCatching { windowManager.removeView(view) } }
         floatingView = null
+        buttonView = null
+        panelView = null
+        closeActionMenu = null
         super.onDestroy()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int = Service.START_STICKY
-
     override fun onBind(intent: Intent?): IBinder? = null
-
 }

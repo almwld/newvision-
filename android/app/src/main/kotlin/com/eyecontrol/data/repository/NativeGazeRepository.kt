@@ -33,6 +33,11 @@ class NativeGazeRepository(
 
     override val latest: StateFlow<GazeSample?> = _latest.asStateFlow()
 
+    fun updateScreenSize(width: Int, height: Int) {
+        processor.updateScreenSize(width, height)
+    }
+
+
     override fun publish(sample: GazeSample) {
         if (sample.timestampNs <= latestTimestampNs) return
         latestTimestampNs = sample.timestampNs

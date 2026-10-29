@@ -12,11 +12,14 @@ import android.view.accessibility.AccessibilityManager
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.eyecontrol.core.constants.DwellConfiguration
+import com.eyecontrol.core.constants.NativeConstants
+import com.eyecontrol.core.platform.ScreenGeometry
 import com.eyecontrol.core.logging.AppLogger
 import com.eyecontrol.data.calibration.CalibrationFeatureSample
 import com.eyecontrol.data.calibration.CalibrationSample
 import com.eyecontrol.data.calibration.CalibrationAngleSample
 import com.eyecontrol.data.camera.TrackingRuntime
+import com.eyecontrol.data.camera.TrackingPreviewPlatformViewFactory
 import com.eyecontrol.data.repository.NativeCalibrationRepository
 import com.eyecontrol.data.repository.NativeGazeRepository
 import com.eyecontrol.data.settings.GazeZoneSettings
@@ -36,7 +39,6 @@ class MainActivity : FlutterActivity() {
     private lateinit var calibrationRepository: NativeCalibrationRepository
     private lateinit var settingsStorage: SettingsStorage
     private var currentSettings = GazeZoneSettings()
-    private var cameraRequested = false
     private var gazeEventJob: Job? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -50,6 +52,10 @@ class MainActivity : FlutterActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        flutterEngine.platformViewsController.registry.registerViewFactory(
+            "com.eyecontrol/camera_preview",
+            TrackingPreviewPlatformViewFactory(),
+        )
         EventChannel(
             flutterEngine.dartExecutor.binaryMessenger,
             "com.eyecontrol/gaze_screen_point",
@@ -84,18 +90,23 @@ class MainActivity : FlutterActivity() {
                 try {
                     when (call.method) {
                         "camera.start" -> {
+                            val forCalibration = call.argument<Boolean>("forCalibration") ?: false
                             if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
                                 result.error("CAMERA_PERMISSION", "Camera permission is required.", null)
-                            } else if (!calibrationRepository.hasActiveModel()) {
+                            } else if (!forCalibration && !Settings.canDrawOverlays(this)) {
+                                result.error("OVERLAY_PERMISSION", "Allow NewVision to display over other apps before tracking.", null)
+                            } else if (!forCalibration && !isAccessibilityEnabled()) {
+                                result.error("ACCESSIBILITY_PERMISSION", "Enable NewVision Accessibility to control taps and swipes outside the app.", null)
+                            } else if (!forCalibration && !calibrationRepository.hasActiveModel()) {
                                 result.error("CALIBRATION_REQUIRED", "Calibration must be completed before tracking starts.", null)
                             } else {
-                                cameraRequested = true
-                                startTrackingService()
+                                startTrackingService(forCalibration)
                                 result.success(null)
                             }
                         }
+                        "tracking.isRunning" -> result.success(com.eyecontrol.service.TrackingForegroundService.isRunning)
+                        "cursor.isRunning" -> result.success(com.eyecontrol.service.OverlayCursorService.isRunning)
                         "camera.stop" -> {
-                            cameraRequested = false
                             stopTrackingService()
                             gazeRepository.reset()
                             result.success(null)
@@ -147,10 +158,10 @@ class MainActivity : FlutterActivity() {
                                 },
                             )
                         }
-                        "screen.size" -> result.success(mapOf(
-                            "width" to resources.displayMetrics.widthPixels,
-                            "height" to resources.displayMetrics.heightPixels,
-                        ))
+                        "screen.size" -> {
+                            val metrics = ScreenGeometry.realMetrics(this)
+                            result.success(mapOf("width" to metrics.widthPixels, "height" to metrics.heightPixels))
+                        }
                         "calibration.isReady" -> result.success(calibrationRepository.hasActiveModel())
                         "calibration.fit" -> {
                             @Suppress("UNCHECKED_CAST")
@@ -281,8 +292,14 @@ class MainActivity : FlutterActivity() {
         )
     }
 
-    private fun startTrackingService() {
+    private fun stopTrackingService() {
+        stopService(Intent(this, com.eyecontrol.service.TrackingForegroundService::class.java))
+        stopService(Intent(this, com.eyecontrol.service.OverlayCursorService::class.java))
+    }
+
+    private fun startTrackingService(forCalibration: Boolean = false) {
         val intent = Intent(this, com.eyecontrol.service.TrackingForegroundService::class.java)
+            .putExtra(com.eyecontrol.service.TrackingForegroundService.EXTRA_CALIBRATION_MODE, forCalibration)
         ContextCompat.startForegroundService(this, intent)
     }
 
@@ -299,13 +316,6 @@ class MainActivity : FlutterActivity() {
     override fun onPause() {
         // TrackingForegroundService owns the camera; Activity lifecycle must not stop it.
         super.onPause()
-    }
-
-    override fun onResume() {
-        super.onResume()
-        if (cameraRequested && !com.eyecontrol.service.TrackingForegroundService.isRunning) {
-            startTrackingService()
-        }
     }
 
     override fun onDestroy() {
