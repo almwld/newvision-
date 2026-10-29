@@ -1,21 +1,25 @@
 package com.eyecontrol.data.camera
 
-import androidx.camera.core.CameraSelector
-import androidx.camera.core.ImageAnalysis
-import androidx.camera.lifecycle.ProcessCameraProvider
 import android.os.Handler
 import android.os.Looper
+import androidx.camera.core.CameraSelector
+import androidx.camera.core.ImageAnalysis
+import androidx.camera.core.Preview
+import androidx.camera.core.UseCase
+import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.content.ContextCompat
-import com.eyecontrol.core.performance.CameraRecovery
 import androidx.lifecycle.LifecycleOwner
 import com.eyecontrol.core.logging.AppLogger
+import com.eyecontrol.core.performance.CameraRecovery
 import com.eyecontrol.data.vision.FaceLandmarkerAnalyzer
 import com.eyecontrol.domain.repository.GazeRepository
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
 /**
- * Owns the CameraX analysis pipeline and deliberately keeps only the newest frame.
+ * Owns the CameraX analysis pipeline and optionally attaches the Flutter preview surface.
+ * The foreground service remains the sole camera owner, so image analysis continues when
+ * the Activity and its preview surface are removed.
  */
 class CameraController(
     private val context: android.content.Context,
@@ -26,6 +30,9 @@ class CameraController(
     private val executor: ExecutorService = Executors.newSingleThreadExecutor()
     private var provider: ProcessCameraProvider? = null
     private var analyzer: FaceLandmarkerAnalyzer? = null
+    private var analysisUseCase: ImageAnalysis? = null
+    private var previewUseCase: Preview? = null
+    private var previewListener: AutoCloseable? = null
     private val mainHandler = Handler(Looper.getMainLooper())
     private val recovery = CameraRecovery()
     @Volatile private var closed = false
@@ -33,6 +40,11 @@ class CameraController(
     fun start() {
         closed = false
         mainHandler.removeCallbacksAndMessages(null)
+        if (previewListener == null) {
+            previewListener = TrackingPreviewRegistry.addListener {
+                mainHandler.post { rebindCurrentUseCases() }
+            }
+        }
         startAttempt(0)
     }
 
@@ -57,13 +69,8 @@ class CameraController(
                     analysis.setAnalyzer(executor) { image ->
                         faceAnalyzer.analyze(image, frontCamera = true)
                     }
-
-                    cameraProvider.unbindAll()
-                    cameraProvider.bindToLifecycle(
-                        lifecycleOwner,
-                        CameraSelector.DEFAULT_FRONT_CAMERA,
-                        analysis,
-                    )
+                    analysisUseCase = analysis
+                    bindUseCases(cameraProvider)
                     AppLogger.i("Camera analysis started at 30 FPS target")
                 } catch (error: Exception) {
                     AppLogger.e("Unable to start camera analysis (attempt " + (attempt + 1) + ")", error)
@@ -79,9 +86,43 @@ class CameraController(
         )
     }
 
+    private fun rebindCurrentUseCases() {
+        val cameraProvider = provider ?: return
+        if (closed || analysisUseCase == null) return
+        try {
+            bindUseCases(cameraProvider)
+        } catch (error: Exception) {
+            AppLogger.e("Unable to attach/detach camera preview", error)
+        }
+    }
+
+    private fun bindUseCases(cameraProvider: ProcessCameraProvider) {
+        if (closed) return
+        val analysis = analysisUseCase ?: return
+        val view = TrackingPreviewRegistry.currentView()
+        val preview = view?.let { previewView ->
+            Preview.Builder().build().also { useCase ->
+                useCase.setSurfaceProvider(previewView.surfaceProvider)
+            }
+        }
+        val useCases = mutableListOf<UseCase>()
+        if (preview != null) useCases.add(preview)
+        useCases.add(analysis)
+
+        cameraProvider.unbindAll()
+        cameraProvider.bindToLifecycle(
+            lifecycleOwner,
+            CameraSelector.DEFAULT_FRONT_CAMERA,
+            *useCases.toTypedArray(),
+        )
+        previewUseCase = preview
+    }
+
     fun stop() {
         mainHandler.removeCallbacksAndMessages(null)
         provider?.unbindAll()
+        analysisUseCase = null
+        previewUseCase = null
         analyzer?.close()
         analyzer = null
         AppLogger.i("Camera analysis stopped")
@@ -89,6 +130,8 @@ class CameraController(
 
     override fun close() {
         closed = true
+        previewListener?.close()
+        previewListener = null
         stop()
         executor.shutdown()
     }
