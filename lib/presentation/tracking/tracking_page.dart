@@ -188,6 +188,14 @@ class TrackingPage extends StatelessWidget {
                       textDirection: TextDirection.rtl,
                       style: const TextStyle(color: Colors.white70, fontSize: 11),
                     ),
+                    if (tracking.error != null) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        tracking.error!,
+                        textDirection: TextDirection.rtl,
+                        style: const TextStyle(color: Colors.orangeAccent, fontSize: 11),
+                      ),
+                    ],
                     const SizedBox(height: 7),
                     ClipRRect(
                       borderRadius: BorderRadius.circular(6),
