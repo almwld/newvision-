@@ -88,9 +88,19 @@ class TrackingProvider extends ChangeNotifier with WidgetsBindingObserver {
       // Launch the system-level control button while the app is visible. It
       // remains available above other apps and owns the external action menu.
       try {
-        final shown = await _bridge.showFloatingButton();
-        if (!shown) {
-          _error = 'التتبع يعمل، لكن الزر العائم لم يبدأ. امنح إذن الظهور فوق التطبيقات.';
+        final requested = await _bridge.showFloatingButton();
+        var shown = false;
+        // The platform call acknowledges the request before Android finishes
+        // attaching the overlay window. Verify the service actually stayed up.
+        for (var attempt = 0; attempt < 6; attempt++) {
+          await Future<void>.delayed(const Duration(milliseconds: 200));
+          if (await _bridge.isFloatingButtonRunning()) {
+            shown = true;
+            break;
+          }
+        }
+        if (!requested || !shown) {
+          _error = 'التتبع يعمل، لكن الزر العائم لم يبدأ. تحقق من إذن الظهور فوق التطبيقات ثم أعد المحاولة.';
         }
       } catch (error) {
         _error = 'التتبع يعمل داخل التطبيق، وتعذر تشغيل الزر العائم: $error';
