@@ -230,7 +230,7 @@ class FloatingButtonService : Service() {
             runCatching { windowManager.updateViewLayout(container, p) }
         }
 
-        menuController = ::setMenuOpen
+        menuController = { open -> setMenuOpen(open) }
         button.setOnTouchListener(FloatingTouchListener(button, panel, container) { setMenuOpen(it) })
         windowManager.addView(container, params)
         floatingView = container
