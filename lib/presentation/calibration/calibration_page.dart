@@ -72,32 +72,37 @@ class _CalibrationPageState extends State<CalibrationPage> {
       if (_reading) return;
       _reading = true;
       ticks++;
-      final gaze = await _platform.latestGaze();
-      if (gaze != null && gaze['confidence'] is num && gaze['blinking'] != true) {
-        final confidence = (gaze['confidence'] as num).toDouble();
-        if (confidence >= 0.35 &&
-            gaze['leftIrisX'] is num &&
-            gaze['leftIrisY'] is num &&
-            gaze['rightIrisX'] is num &&
-            gaze['rightIrisY'] is num) {
-          _current.add({
-            'leftIrisX': (gaze['leftIrisX'] as num).toDouble(),
-            'leftIrisY': (gaze['leftIrisY'] as num).toDouble(),
-            'rightIrisX': (gaze['rightIrisX'] as num).toDouble(),
-            'rightIrisY': (gaze['rightIrisY'] as num).toDouble(),
-          });
-          final yaw = gaze['yawDegrees'];
-          final pitch = gaze['pitchDegrees'];
-          if (yaw is num && pitch is num &&
-              yaw.toDouble().isFinite && pitch.toDouble().isFinite) {
-            _currentAngles.add({
-              'yawDegrees': yaw.toDouble(),
-              'pitchDegrees': pitch.toDouble(),
+      try {
+        final gaze = await _platform.latestGaze();
+        if (gaze != null && gaze['confidence'] is num && gaze['blinking'] != true) {
+          final confidence = (gaze['confidence'] as num).toDouble();
+          if (confidence >= 0.35 &&
+              gaze['leftIrisX'] is num &&
+              gaze['leftIrisY'] is num &&
+              gaze['rightIrisX'] is num &&
+              gaze['rightIrisY'] is num) {
+            _current.add({
+              'leftIrisX': (gaze['leftIrisX'] as num).toDouble(),
+              'leftIrisY': (gaze['leftIrisY'] as num).toDouble(),
+              'rightIrisX': (gaze['rightIrisX'] as num).toDouble(),
+              'rightIrisY': (gaze['rightIrisY'] as num).toDouble(),
             });
+            final yaw = gaze['yawDegrees'];
+            final pitch = gaze['pitchDegrees'];
+            if (yaw is num && pitch is num &&
+                yaw.toDouble().isFinite && pitch.toDouble().isFinite) {
+              _currentAngles.add({
+                'yawDegrees': yaw.toDouble(),
+                'pitchDegrees': pitch.toDouble(),
+              });
+            }
           }
         }
+      } catch (error) {
+        _error = 'تعذر قراءة بيانات النظر أثناء المعايرة: $error';
+      } finally {
+        _reading = false;
       }
-      _reading = false;
 
       if (ticks >= 20) {
         timer.cancel();
