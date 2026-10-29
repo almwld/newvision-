@@ -7,6 +7,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.provider.Settings
 import android.view.accessibility.AccessibilityManager
 import android.widget.Toast
@@ -45,6 +46,16 @@ class FloatingButtonReceiver : BroadcastReceiver() {
             context.stopService(Intent(context, TrackingForegroundService::class.java))
             context.stopService(Intent(context, OverlayCursorService::class.java))
             Toast.makeText(context, "تم إيقاف تتبع النظر", Toast.LENGTH_SHORT).show()
+            return
+        }
+        if (!Settings.canDrawOverlays(context)) {
+            Toast.makeText(context, "اسمح لـ NewVision بالظهور فوق التطبيقات أولاً", Toast.LENGTH_LONG).show()
+            context.startActivity(
+                Intent(
+                    Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                    Uri.parse("package:${context.packageName}"),
+                ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            )
             return
         }
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
