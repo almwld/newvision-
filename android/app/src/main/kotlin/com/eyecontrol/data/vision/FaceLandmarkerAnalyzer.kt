@@ -19,6 +19,7 @@ import com.google.mediapipe.tasks.vision.facelandmarker.FaceLandmarkerResult
 import java.nio.ByteBuffer
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.math.abs
 import kotlin.math.hypot
 import kotlin.math.min
 
@@ -106,10 +107,15 @@ class FaceLandmarkerAnalyzer(
 
         val rawX = ((rightNormalized.first + leftNormalized.first) * 0.5f).coerceIn(0f, 1f)
         val rawY = ((rightNormalized.second + leftNormalized.second) * 0.5f).coerceIn(0f, 1f)
-        val faceWidth = (landmarks.maxOf { it.x() } - landmarks.minOf { it.x() }).coerceAtLeast(0f)
-        val faceHeight = (landmarks.maxOf { it.y() } - landmarks.minOf { it.y() }).coerceAtLeast(0f)
-        val diagonal = hypot(faceWidth.toDouble(), faceHeight.toDouble()).toFloat()
-        val confidence = min(1f, diagonal * 1.5f).coerceIn(0.1f, 1f)
+        // Mirror Mudabbir's quality scoring: reject confidence based on eye
+        // openness and left/right consistency, not merely the size of the face.
+        val leftOpenness = eyeOpenness(leftEye, image.width, image.height) ?: 0f
+        val rightOpenness = eyeOpenness(rightEye, image.width, image.height) ?: 0f
+        val opennessQuality = (min(leftOpenness, rightOpenness) / 0.22f).coerceIn(0f, 1f)
+        val symmetryError = abs(leftNormalized.first - rightNormalized.first) +
+            abs(leftNormalized.second - rightNormalized.second)
+        val symmetryQuality = (1f - symmetryError / 1.1f).coerceIn(0f, 1f)
+        val confidence = (opennessQuality * symmetryQuality).coerceIn(0f, 1f)
         val pupilDiameter = (irisDiameter(leftIris) + irisDiameter(rightIris)) * 0.5f
         val minX = landmarks.minOf { it.x() }.coerceIn(0f, 1f) * image.width.toFloat()
         val minY = landmarks.minOf { it.y() }.coerceIn(0f, 1f) * image.height.toFloat()
@@ -188,6 +194,22 @@ class FaceLandmarkerAnalyzer(
         landmarks: List<NormalizedLandmark>,
         indices: IntArray,
     ): List<NormalizedLandmark> = indices.map { landmarks[it] }
+
+    private fun eyeOpenness(
+        contour: List<NormalizedLandmark>,
+        imageWidth: Int,
+        imageHeight: Int,
+    ): Float? {
+        if (contour.size < 6 || imageWidth <= 0 || imageHeight <= 0) return null
+        val minX = contour.minOf { it.x() } * imageWidth
+        val maxX = contour.maxOf { it.x() } * imageWidth
+        val minY = contour.minOf { it.y() } * imageHeight
+        val maxY = contour.maxOf { it.y() } * imageHeight
+        val width = maxX - minX
+        val height = maxY - minY
+        if (!width.isFinite() || !height.isFinite() || width < 2f || height < 1f) return null
+        return (height / width).takeIf { it.isFinite() }
+    }
 
     override fun close() {
         if (closed.compareAndSet(false, true)) {
