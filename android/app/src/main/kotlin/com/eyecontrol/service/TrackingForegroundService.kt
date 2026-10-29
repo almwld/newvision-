@@ -37,6 +37,7 @@ class TrackingForegroundService : LifecycleService() {
     companion object {
         private const val GAZE_STALE_CHECK_MS = 250L
         private const val GAZE_STALE_AFTER_MS = 750L
+        private const val MIN_CONTROL_CONFIDENCE = 0.45f
         private const val CHANNEL_ID = "newvision_tracking"
         private const val NOTIFICATION_ID = 1002
         const val EXTRA_CALIBRATION_MODE = "com.eyecontrol.extra.CALIBRATION_MODE"
@@ -144,7 +145,7 @@ class TrackingForegroundService : LifecycleService() {
         lifecycleScope.launch {
             TrackingRuntime.repository.latestScreenPoint().collectLatest { point ->
                 if (calibrationMode) return@collectLatest
-                if (point == null || point.isBlinking) {
+                if (point == null || point.isBlinking || point.confidence < MIN_CONTROL_CONFIDENCE) {
                     OverlayCursorService.hide()
                     zoneTracker.reset()
                     dwellController.reset()
@@ -175,7 +176,8 @@ class TrackingForegroundService : LifecycleService() {
                 val pointUptimeMs = point?.timestampNs?.div(1_000_000L)
                 val stale = pointUptimeMs == null ||
                     android.os.SystemClock.uptimeMillis() - pointUptimeMs > GAZE_STALE_AFTER_MS
-                if (stale || point?.isBlinking == true) {
+                if (stale || point?.isBlinking == true ||
+                    (point != null && point.confidence < MIN_CONTROL_CONFIDENCE)) {
                     OverlayCursorService.hide()
                     zoneTracker.reset()
                     dwellController.reset()
