@@ -61,21 +61,21 @@ class TouchAccessibilityService : AccessibilityService() {
     }
 
     fun scrollDown(): Boolean {
-        val metrics = resources.displayMetrics
+        val metrics = ScreenGeometry.realMetrics(this)
         val width = metrics.widthPixels.toFloat()
         val height = metrics.heightPixels.toFloat()
         return dispatchSwipe(width * 0.5f, height * 0.28f, width * 0.5f, height * 0.72f)
     }
 
     fun scrollLeft(): Boolean {
-        val metrics = resources.displayMetrics
+        val metrics = ScreenGeometry.realMetrics(this)
         val width = metrics.widthPixels.toFloat()
         val height = metrics.heightPixels.toFloat()
         return dispatchSwipe(width * 0.72f, height * 0.5f, width * 0.28f, height * 0.5f)
     }
 
     fun scrollRight(): Boolean {
-        val metrics = resources.displayMetrics
+        val metrics = ScreenGeometry.realMetrics(this)
         val width = metrics.widthPixels.toFloat()
         val height = metrics.heightPixels.toFloat()
         return dispatchSwipe(width * 0.28f, height * 0.5f, width * 0.72f, height * 0.5f)
