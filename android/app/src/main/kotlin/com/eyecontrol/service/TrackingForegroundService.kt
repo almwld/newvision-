@@ -281,6 +281,9 @@ class TrackingForegroundService : LifecycleService() {
 
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
+        if (!::currentSettings.isInitialized || !::zoneTracker.isInitialized || !::dwellController.isInitialized) {
+            return
+        }
         TrackingRuntime.initialize(this)
         val metrics = ScreenGeometry.realMetrics(this)
         zoneDetector = GazeZoneDetector(metrics.widthPixels, metrics.heightPixels) { currentSettings }
