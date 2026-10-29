@@ -177,6 +177,12 @@ class _CalibrationPageState extends State<CalibrationPage> {
       appBar: AppBar(title: const Text('معايرة التحكم بالعين')),
       body: Stack(
         children: [
+          const Positioned.fill(
+            child: AndroidView(viewType: 'com.eyecontrol/camera_preview'),
+          ),
+          const Positioned.fill(
+            child: ColoredBox(color: Color(0x660A1720)),
+          ),
           Positioned.fill(
             child: Padding(
               padding: const EdgeInsets.all(24),
