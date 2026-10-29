@@ -64,6 +64,7 @@ class OverlayCursorService : Service() {
             windowManager.addView(ring, params)
             cursor = ring
             instance.set(this)
+            isRunning = true
         } catch (error: Exception) {
             cursor = null
             stopSelf()
@@ -90,6 +91,7 @@ class OverlayCursorService : Service() {
 
     override fun onDestroy() {
         instance.compareAndSet(this, null)
+        isRunning = false
         cursor?.let { view -> runCatching { windowManager.removeView(view) } }
         cursor = null
         super.onDestroy()
@@ -98,6 +100,8 @@ class OverlayCursorService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     companion object {
+        @Volatile var isRunning: Boolean = false
+            private set
         private val instance = AtomicReference<OverlayCursorService?>()
         fun update(point: ScreenPoint) {
             instance.get()?.update(point)
