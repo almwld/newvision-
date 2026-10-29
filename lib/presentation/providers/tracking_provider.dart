@@ -91,13 +91,14 @@ class TrackingProvider extends ChangeNotifier with WidgetsBindingObserver {
         final requested = await _bridge.showFloatingButton();
         var shown = false;
         // The platform call acknowledges the request before Android finishes
-        // attaching the overlay window. Verify the service actually stayed up.
-        for (var attempt = 0; attempt < 6; attempt++) {
-          await Future<void>.delayed(const Duration(milliseconds: 200));
+        // attaching the overlay window. Allow creation to settle, then verify it.
+        await Future<void>.delayed(const Duration(milliseconds: 400));
+        for (var attempt = 0; attempt < 4; attempt++) {
           if (await _bridge.isFloatingButtonRunning()) {
             shown = true;
             break;
           }
+          await Future<void>.delayed(const Duration(milliseconds: 200));
         }
         if (!requested || !shown) {
           _error = 'التتبع يعمل، لكن الزر العائم لم يبدأ. تحقق من إذن الظهور فوق التطبيقات ثم أعد المحاولة.';
