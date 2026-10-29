@@ -15,6 +15,7 @@ import com.eyecontrol.MainActivity
 import com.eyecontrol.R
 import com.eyecontrol.data.camera.CameraController
 import com.eyecontrol.data.camera.TrackingRuntime
+import com.eyecontrol.core.platform.ScreenGeometry
 import com.eyecontrol.core.constants.NativeConstants
 import com.eyecontrol.data.settings.GazeZoneDetector
 import com.eyecontrol.data.settings.GazeZoneSettings
@@ -66,8 +67,8 @@ class TrackingForegroundService : LifecycleService() {
         settingsStorage = SettingsStorage(sharedPreferences)
         currentSettings = settingsStorage.load()
         zoneDetector = GazeZoneDetector(
-            resources.displayMetrics.widthPixels,
-            resources.displayMetrics.heightPixels,
+            ScreenGeometry.realMetrics(this).widthPixels,
+            ScreenGeometry.realMetrics(this).heightPixels,
         ) { currentSettings }
         zoneTracker = ZoneActivationTracker(currentSettings.activationMs, currentSettings.cooldownMs)
         hapticFeedback = HapticFeedback(this)
