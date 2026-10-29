@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../platform/eye_control_platform.dart';
 
 class CalibrationPage extends StatefulWidget {
@@ -29,6 +30,15 @@ class _CalibrationPageState extends State<CalibrationPage> {
   final List<Map<String, double>> _current = [];
   final List<Map<String, double>> _currentAngles = [];
   bool _reading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // The nine targets must cover the same coordinate space used by Android
+    // Accessibility gestures and the system-wide gaze cursor.
+    unawaited(SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky));
+  }
+
 
   Future<void> _start() async {
     setState(() {
@@ -167,6 +177,10 @@ class _CalibrationPageState extends State<CalibrationPage> {
     if (_running) {
       unawaited(_platform.stopCamera());
     }
+    unawaited(SystemChrome.setEnabledSystemUIMode(
+      SystemUiMode.manual,
+      overlays: SystemUiOverlay.values,
+    ));
     super.dispose();
   }
 
@@ -174,8 +188,8 @@ class _CalibrationPageState extends State<CalibrationPage> {
   Widget build(BuildContext context) {
     final active = _index >= 0 && _index < targets.length;
     return Scaffold(
-      appBar: AppBar(title: const Text('معايرة التحكم بالعين')),
       body: Stack(
+        fit: StackFit.expand,
         children: [
           const Positioned.fill(
             child: AndroidView(viewType: 'com.eyecontrol/camera_preview'),
