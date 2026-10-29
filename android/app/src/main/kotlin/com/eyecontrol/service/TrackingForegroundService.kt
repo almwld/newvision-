@@ -44,6 +44,7 @@ class TrackingForegroundService : LifecycleService() {
     @Volatile private var calibrationMode = false
     private var gazeControlLoopStarted = false
     private lateinit var settingsStorage: SettingsStorage
+    private lateinit var sharedPreferences: android.content.SharedPreferences
     private lateinit var zoneDetector: GazeZoneDetector
     private lateinit var zoneTracker: ZoneActivationTracker
     private lateinit var dwellController: DwellController
@@ -57,7 +58,8 @@ class TrackingForegroundService : LifecycleService() {
         TrackingRuntime.initialize(this)
         createChannel()
         startAsForeground()
-        settingsStorage = SettingsStorage(getSharedPreferences("newvision", MODE_PRIVATE))
+        sharedPreferences = getSharedPreferences("newvision", MODE_PRIVATE)
+        settingsStorage = SettingsStorage(sharedPreferences)
         currentSettings = settingsStorage.load()
         zoneDetector = GazeZoneDetector(
             resources.displayMetrics.widthPixels,
@@ -78,7 +80,7 @@ class TrackingForegroundService : LifecycleService() {
                 NativeConstants.DWELL_RADIUS_PX,
             )
         }
-        settingsStorage.registerOnSharedPreferenceChangeListener(preferencesListener)
+        sharedPreferences.registerOnSharedPreferenceChangeListener(preferencesListener)
         cameraController = CameraController(this, this, TrackingRuntime.repository)
         cameraController?.start()
     }
@@ -171,7 +173,7 @@ class TrackingForegroundService : LifecycleService() {
     }
 
     override fun onDestroy() {
-        settingsStorage.unregisterOnSharedPreferenceChangeListener(preferencesListener)
+        sharedPreferences.unregisterOnSharedPreferenceChangeListener(preferencesListener)
         cameraController?.close()
         cameraController = null
         TrackingRuntime.reset()
