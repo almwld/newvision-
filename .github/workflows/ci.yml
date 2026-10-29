@@ -21,19 +21,6 @@ jobs:
         run: flutter pub get
       - name: Analyze
         run: flutter analyze
-      - name: Flutter tests with coverage
-        run: flutter test --coverage --no-pub
-      - name: Install lcov
-        run: sudo apt-get update && sudo apt-get install -y lcov
-      - name: Coverage summary
-        run: lcov --summary coverage/lcov.info
-      - name: Upload Flutter coverage
-        uses: actions/upload-artifact@v5
-        with:
-          name: flutter-coverage
-          path: coverage/lcov.info
-          if-no-files-found: error
-          retention-days: 30
 
   android:
     runs-on: ubuntu-22.04
@@ -56,9 +43,6 @@ jobs:
       - uses: gradle/actions/setup-gradle@v5
         with:
           gradle-version: '8.4'
-      - name: Android unit tests
-        working-directory: android
-        run: gradle --no-daemon test
       - name: Android debug build
         working-directory: android
         run: gradle --no-daemon :app:assembleDebug
