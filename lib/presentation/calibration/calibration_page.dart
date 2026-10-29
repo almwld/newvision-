@@ -108,6 +108,7 @@ class _CalibrationPageState extends State<CalibrationPage> {
         timer.cancel();
         final point = targets[_index];
         if (_current.length >= 8) {
+          _error = null;
           double average(String key) =>
               _current.map((item) => item[key]!).reduce((a, b) => a + b) / _current.length;
           final sample = <String, double>{
