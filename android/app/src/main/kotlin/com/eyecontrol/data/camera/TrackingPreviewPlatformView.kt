@@ -26,7 +26,7 @@ class TrackingPreviewPlatformView(context: Context) : PlatformView {
     override fun getView(): View = previewView
 
     override fun dispose() {
-        TrackingPreviewRegistry.set(null)
+        TrackingPreviewRegistry.clear(previewView)
     }
 }
 
@@ -47,6 +47,10 @@ object TrackingPreviewRegistry {
     fun set(view: PreviewView?) {
         current = view
         listeners.forEach { listener -> runCatching { listener(view) } }
+    }
+
+    fun clear(view: PreviewView) {
+        if (current === view) set(null)
     }
 
     fun addListener(listener: (PreviewView?) -> Unit): AutoCloseable {
