@@ -1,11 +1,14 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import '../../data/datasources/native_bridge.dart';
 import '../../data/models/gaze_sample_model.dart';
 
-class TrackingProvider extends ChangeNotifier {
-  TrackingProvider({NativeBridge? bridge}) : _bridge = bridge ?? NativeBridge();
+class TrackingProvider extends ChangeNotifier with WidgetsBindingObserver {
+  TrackingProvider({NativeBridge? bridge}) : _bridge = bridge ?? NativeBridge() {
+    WidgetsBinding.instance.addObserver(this);
+  }
 
   final NativeBridge _bridge;
   StreamSubscription<Map<String, dynamic>>? _subscription;
@@ -13,6 +16,8 @@ class TrackingProvider extends ChangeNotifier {
   bool _running = false;
   bool _starting = false;
   String? _error;
+  Timer? _staleTimer;
+  DateTime? _lastSampleAt;
 
   GazeSampleModel? get latest => _latest;
   bool get running => _running;
@@ -28,12 +33,24 @@ class TrackingProvider extends ChangeNotifier {
     try {
       final previousSubscription = _subscription;
       _subscription = _bridge.screenPoints.listen((map) {
+        _lastSampleAt = DateTime.now();
         _latest = GazeSampleModel.fromMap(map);
         notifyListeners();
       });
       await previousSubscription?.cancel();
       await _bridge.startCamera();
       _running = true;
+      _lastSampleAt = DateTime.now();
+      _staleTimer?.cancel();
+      _staleTimer = Timer.periodic(const Duration(milliseconds: 250), (_) {
+        final last = _lastSampleAt;
+        if (!_running || last == null) return;
+        if (DateTime.now().difference(last) > const Duration(milliseconds: 750) &&
+            _latest != null) {
+          _latest = null;
+          notifyListeners();
+        }
+      });
 
       // Launch the system-level control button while the app is visible. It
       // remains available above other apps and owns the external action menu.
@@ -46,6 +63,9 @@ class TrackingProvider extends ChangeNotifier {
         _error = 'التتبع يعمل داخل التطبيق، وتعذر تشغيل الزر العائم: $error';
       }
     } catch (error) {
+      _staleTimer?.cancel();
+      _staleTimer = null;
+      _lastSampleAt = null;
       await _subscription?.cancel();
       _subscription = null;
       _error = error.toString();
@@ -59,6 +79,9 @@ class TrackingProvider extends ChangeNotifier {
   Future<void> stop() async {
     if (!_running && !_starting) return;
     _starting = false;
+    _staleTimer?.cancel();
+    _staleTimer = null;
+    _lastSampleAt = null;
     try {
       await _bridge.stopCamera();
     } catch (error) {
@@ -81,7 +104,33 @@ class TrackingProvider extends ChangeNotifier {
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && _running) {
+      unawaited(_syncNativeTrackingState());
+    }
+  }
+
+  Future<void> _syncNativeTrackingState() async {
+    try {
+      if (await _bridge.isTrackingRunning()) return;
+      _running = false;
+      _starting = false;
+      _latest = null;
+      _lastSampleAt = null;
+      _staleTimer?.cancel();
+      _staleTimer = null;
+      await _subscription?.cancel();
+      _subscription = null;
+      notifyListeners();
+    } catch (_) {
+      // Keep the current UI state if the platform cannot be queried temporarily.
+    }
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _staleTimer?.cancel();
     _subscription?.cancel();
     super.dispose();
   }
