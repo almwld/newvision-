@@ -59,10 +59,16 @@ class TrackingProvider extends ChangeNotifier with WidgetsBindingObserver {
       _running = true;
       _lastSampleAt = DateTime.now();
       _staleTimer?.cancel();
+      var statusTicks = 0;
       _staleTimer = Timer.periodic(const Duration(milliseconds: 250), (_) {
+        if (!_running) return;
+        statusTicks++;
+        // The floating control can stop the native service without interacting
+        // with this screen, so reconcile native state while tracking is active.
+        if (statusTicks % 4 == 0) unawaited(_syncNativeTrackingState());
         final last = _lastSampleAt;
-        if (!_running || last == null) return;
-        if (DateTime.now().difference(last) > const Duration(milliseconds: 750) &&
+        if (last != null &&
+            DateTime.now().difference(last) > const Duration(milliseconds: 750) &&
             _latest != null) {
           _latest = null;
           notifyListeners();
@@ -122,14 +128,15 @@ class TrackingProvider extends ChangeNotifier with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed && _running) {
-      unawaited(_syncNativeTrackingState());
+    if (state == AppLifecycleState.resumed) {
+      unawaited(refreshCalibrationState());
+      if (_running) unawaited(_syncNativeTrackingState());
     }
   }
 
   Future<void> _syncNativeTrackingState() async {
+    if (!_running) return;
     try {
-      await refreshCalibrationState();
       if (await _bridge.isTrackingRunning()) return;
       _running = false;
       _starting = false;
