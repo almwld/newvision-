@@ -17,13 +17,17 @@ object TrackingRuntime {
 
     @Synchronized
     fun initialize(context: Context) {
-        if (initialized) return
         val app = context.applicationContext
+        val metrics = ScreenGeometry.realMetrics(app)
+        if (initialized) {
+            repositoryValue.updateScreenSize(metrics.widthPixels, metrics.heightPixels)
+            return
+        }
         val factory = NativeGazeRepositoryFactory(app)
         calibrationRepositoryValue = factory.calibrationRepository()
         repositoryValue = factory.create(
-            screenWidth = ScreenGeometry.realMetrics(app).widthPixels,
-            screenHeight = ScreenGeometry.realMetrics(app).heightPixels,
+            screenWidth = metrics.widthPixels,
+            screenHeight = metrics.heightPixels,
         )
         initialized = true
     }
