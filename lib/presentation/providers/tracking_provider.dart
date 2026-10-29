@@ -34,6 +34,17 @@ class TrackingProvider extends ChangeNotifier {
       await previousSubscription?.cancel();
       await _bridge.startCamera();
       _running = true;
+
+      // Launch the system-level control button while the app is visible. It
+      // remains available above other apps and owns the external action menu.
+      try {
+        final shown = await _bridge.showFloatingButton();
+        if (!shown) {
+          _error = 'التتبع يعمل، لكن الزر العائم لم يبدأ. امنح إذن الظهور فوق التطبيقات.';
+        }
+      } catch (error) {
+        _error = 'التتبع يعمل داخل التطبيق، وتعذر تشغيل الزر العائم: $error';
+      }
     } catch (error) {
       await _subscription?.cancel();
       _subscription = null;
@@ -58,6 +69,15 @@ class TrackingProvider extends ChangeNotifier {
     _running = false;
     _latest = null;
     notifyListeners();
+  }
+
+  Future<void> hideFloatingButton() async {
+    try {
+      await _bridge.hideFloatingButton();
+    } catch (error) {
+      _error = error.toString();
+      notifyListeners();
+    }
   }
 
   @override
