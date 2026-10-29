@@ -67,7 +67,11 @@ class FloatingButtonService : Service() {
             stopSelf()
             return
         }
-        addFloatingButton()
+        runCatching { addFloatingButton() }
+            .onFailure { error ->
+                Log.e(TAG, "Unable to attach floating action control", error)
+                stopSelf()
+            }
     }
 
     private fun startForegroundCompat() {
