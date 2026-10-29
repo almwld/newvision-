@@ -277,13 +277,15 @@ class FloatingButtonService : Service() {
         private var touchX = 0f
         private var touchY = 0f
         private var dragging = false
+        private var menuWasOpenOnDown = false
         private var downTime = 0L
 
         override fun onTouch(v: View, event: MotionEvent): Boolean {
             val p = params ?: return false
             when (event.actionMasked) {
                 MotionEvent.ACTION_DOWN -> {
-                    if (panel.visibility == View.VISIBLE) setMenuOpen(false)
+                    menuWasOpenOnDown = panel.visibility == View.VISIBLE
+                    if (menuWasOpenOnDown) setMenuOpen(false)
                     initialX = p.x
                     initialY = p.y
                     touchX = event.rawX
@@ -310,7 +312,9 @@ class FloatingButtonService : Service() {
                         if (elapsed > 850) {
                             sendBroadcast(Intent(ACTION_EMERGENCY).setPackage(packageName))
                         } else {
-                            setMenuOpen(panel.visibility != View.VISIBLE)
+                            // Toggle from the state at touch-down. Closing the panel on ACTION_DOWN
+                            // must not make ACTION_UP reopen it immediately.
+                            setMenuOpen(!menuWasOpenOnDown)
                         }
                     } else {
                         val metrics = ScreenGeometry.realMetrics(this@FloatingButtonService)
