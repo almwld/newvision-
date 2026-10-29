@@ -55,6 +55,7 @@ class FloatingButtonService : Service() {
     private var closeActionMenu: (() -> Unit)? = null
     private var density = 1f
     private var buttonSize = 60
+    private var dockedRight = false
 
     override fun onCreate() {
         super.onCreate()
@@ -193,7 +194,6 @@ class FloatingButtonService : Service() {
 
         var menuOpenAbove = false
         var menuAnchorY = 0
-        var dockedRight = false
         fun setMenuOpen(open: Boolean) {
             val p = params ?: return
             val buttonLayout = button.layoutParams as FrameLayout.LayoutParams
