@@ -5,6 +5,7 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
 import android.content.Intent
+import android.content.res.Configuration
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
@@ -226,6 +227,16 @@ class TrackingForegroundService : LifecycleService() {
             }
         }
         return Service.START_STICKY
+    }
+
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        TrackingRuntime.initialize(this)
+        val metrics = ScreenGeometry.realMetrics(this)
+        zoneDetector = GazeZoneDetector(metrics.widthPixels, metrics.heightPixels) { currentSettings }
+        zoneTracker.reset()
+        dwellController.reset()
+        OverlayCursorService.hide()
     }
 
     override fun onBind(intent: Intent): IBinder? = super.onBind(intent)
