@@ -105,6 +105,7 @@ class MainActivity : FlutterActivity() {
                                 result.success(null)
                             }
                         }
+                        "tracking.isRunning" -> result.success(com.eyecontrol.service.TrackingForegroundService.isRunning)
                         "camera.stop" -> {
                             cameraRequested = false
                             stopTrackingService()
