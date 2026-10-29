@@ -30,7 +30,6 @@ class FaceLandmarkerAnalyzer(
     private val closed = AtomicBoolean(false)
     private val landmarker: FaceLandmarker
     private val blinkDetector = BlinkDetector()
-    private val irisNormalizer = IrisNormalizer()
     private val l2cs = L2csInferenceEngine(context)
     private val pendingFrames = ConcurrentHashMap<Long, Bitmap>()
 
