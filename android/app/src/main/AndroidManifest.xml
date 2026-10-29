@@ -73,6 +73,11 @@
             android:exported="false">
             <intent-filter>
                 <action android:name="com.eyecontrol.TOGGLE_TRACKING" />
+                <action android:name="com.eyecontrol.TAP_CENTER" />
+                <action android:name="com.eyecontrol.SCROLL_UP" />
+                <action android:name="com.eyecontrol.SCROLL_DOWN" />
+                <action android:name="com.eyecontrol.SCROLL_LEFT" />
+                <action android:name="com.eyecontrol.SCROLL_RIGHT" />
                 <action android:name="com.eyecontrol.EMERGENCY" />
             </intent-filter>
         </receiver>
