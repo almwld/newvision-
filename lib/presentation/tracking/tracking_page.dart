@@ -15,7 +15,6 @@ class TrackingPage extends StatelessWidget {
     if (!permissions.ready) return _buildSetupScreen(context, permissions);
     if (tracking.starting) return _buildStartingScreen(context);
     if (!tracking.running) return _buildStartScreen(context, tracking);
-    if (tracking.latest == null) return _buildWaitingScreen(context, tracking);
     return _buildRunningScreen(context, tracking);
   }
 
@@ -55,13 +54,26 @@ class TrackingPage extends StatelessWidget {
       const SizedBox(height: 24),
       const Text('جاهز لتتبع النظر', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
       const SizedBox(height: 10),
-      const Text('ابدأ التتبع هنا؛ سيظهر مؤشر النظر وزر الإجراءات العائم فوق التطبيقات عند الانتقال إلى تطبيق آخر.', textAlign: TextAlign.center),
+      Text(
+        tracking.calibrated
+            ? 'ابدأ التتبع هنا؛ سيظهر مؤشر النظر وزر الإجراءات العائم فوق التطبيقات عند الانتقال إلى تطبيق آخر.'
+            : 'ابدأ بمعايرة النظر ذات النقاط التسع. بعد ذلك يمكنك التحكم بالنقر والتمرير خارج NewVision.',
+        textAlign: TextAlign.center,
+      ),
       if (tracking.error != null) ...[const SizedBox(height: 14), Text(tracking.error!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.red))],
       const SizedBox(height: 28),
-      FilledButton.icon(onPressed: tracking.start, icon: const Icon(Icons.play_arrow_rounded, size: 28), label: const Text('بدء التتبع', style: TextStyle(fontSize: 19)), style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 42, vertical: 18))),
+      FilledButton.icon(
+        onPressed: tracking.calibrated ? tracking.start : null,
+        icon: const Icon(Icons.play_arrow_rounded, size: 28),
+        label: const Text('بدء التتبع', style: TextStyle(fontSize: 19)),
+        style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 42, vertical: 18)),
+      ),
       const SizedBox(height: 10),
       OutlinedButton.icon(
-        onPressed: () => context.push('/calibration'),
+        onPressed: () async {
+          await context.push('/calibration');
+          await tracking.refreshCalibrationState();
+        },
         icon: const Icon(Icons.center_focus_strong_rounded),
         label: const Text('معايرة النظر (9 نقاط)'),
       ),
@@ -73,75 +85,142 @@ class TrackingPage extends StatelessWidget {
     body: const Center(child: Column(mainAxisSize: MainAxisSize.min, children: [SizedBox(width: 42, height: 42, child: CircularProgressIndicator()), SizedBox(height: 20), Text('جارٍ تشغيل الكاميرا وخدمة التتبع...', style: TextStyle(fontSize: 18))])),
   );
 
-  Widget _buildWaitingScreen(BuildContext context, TrackingProvider tracking) => Scaffold(
-    appBar: AppBar(title: const Text('تتبع النظر')),
-    body: Stack(fit: StackFit.expand, children: [
-      const AndroidView(viewType: 'com.eyecontrol/camera_preview'),
-      const ColoredBox(color: Color(0x770A1720)),
-      Center(child: Padding(padding: const EdgeInsets.all(28), child: Column(mainAxisSize: MainAxisSize.min, children: [
-        const Icon(Icons.visibility_outlined, size: 78, color: Color(0xFF55D6C8)),
-        const SizedBox(height: 18),
-        const Text('التتبع يعمل', style: TextStyle(fontSize: 23, fontWeight: FontWeight.bold, color: Colors.white)),
-        const SizedBox(height: 8),
-        const Text('في انتظار قراءة موثوقة من العين. أبقِ الوجه أمام الكاميرا وفي إضاءة جيدة.', textAlign: TextAlign.center, style: TextStyle(color: Colors.white)),
-        const SizedBox(height: 24),
-        if (tracking.error != null) Text(tracking.error!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.redAccent)),
-        const SizedBox(height: 12),
-        OutlinedButton.icon(onPressed: tracking.stop, icon: const Icon(Icons.stop), label: const Text('إيقاف التتبع')),
-      ]))),
-    ]),
-  );
-
   Widget _buildRunningScreen(BuildContext context, TrackingProvider tracking) {
-    final gaze = tracking.latest!;
-    final confidence = gaze.confidence.clamp(0.0, 1.0);
+    final gaze = tracking.latest;
+    final confidence = (gaze?.confidence ?? 0.0).clamp(0.0, 1.0);
     final media = MediaQuery.of(context);
     final dpr = media.devicePixelRatio;
-    final screenX = gaze.xPx / dpr;
-    final screenY = gaze.yPx / dpr - media.padding.top - kToolbarHeight;
-    final direction = _direction(gaze.xPx, gaze.yPx, media.size.width * dpr, media.size.height * dpr);
+    final screenX = gaze == null ? null : gaze.xPx / dpr;
+    final screenY = gaze == null ? null : gaze.yPx / dpr - media.padding.top - kToolbarHeight;
+    final direction = gaze == null
+        ? 'لم يُكتشف النظر بعد'
+        : _direction(gaze.xPx, gaze.yPx, media.size.width * dpr, media.size.height * dpr);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('تتبع النظر'), actions: [
-        Padding(padding: const EdgeInsetsDirectional.only(end: 16), child: Center(child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Icon(Icons.circle, size: 10, color: gaze.isBlinking ? Colors.orange : const Color(0xFF0A8F83)),
-          const SizedBox(width: 6), Text(gaze.isBlinking ? 'رمشة' : 'نشط'),
-        ]))),
-      ]),
+      backgroundColor: const Color(0xFF0A1720),
+      appBar: AppBar(
+        title: const Text('GazeFusion — تتبع النظر'),
+        actions: [
+          Padding(
+            padding: const EdgeInsetsDirectional.only(end: 16),
+            child: Center(
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                Icon(
+                  Icons.circle,
+                  size: 10,
+                  color: gaze == null ? Colors.orange : (gaze.isBlinking ? Colors.orange : const Color(0xFF0A8F83)),
+                ),
+                const SizedBox(width: 6),
+                Text(gaze == null ? 'بانتظار العين' : (gaze.isBlinking ? 'رمشة' : 'نشط')),
+              ]),
+            ),
+          ),
+        ],
+      ),
       body: LayoutBuilder(builder: (context, constraints) {
-        final cursorX = (screenX - 15).clamp(0.0, (constraints.maxWidth - 30).clamp(0.0, double.infinity)).toDouble();
-        final cursorY = (screenY - 15).clamp(0.0, (constraints.maxHeight - 30).clamp(0.0, double.infinity)).toDouble();
+        final cursorX = screenX == null
+            ? 0.0
+            : (screenX - 14).clamp(0.0, (constraints.maxWidth - 28).clamp(0.0, double.infinity)).toDouble();
+        final cursorY = screenY == null
+            ? 0.0
+            : (screenY - 14).clamp(0.0, (constraints.maxHeight - 28).clamp(0.0, double.infinity)).toDouble();
         return Stack(fit: StackFit.expand, children: [
           const AndroidView(viewType: 'com.eyecontrol/camera_preview'),
           const ColoredBox(color: Color(0x330A1720)),
-          Positioned.fill(child: CustomPaint(painter: _TrackingGridPainter())),
-          Positioned(left: 14, right: 14, top: 14, child: Card(
-            color: const Color(0xEE1E293B),
-            child: Padding(padding: const EdgeInsets.all(14), child: Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-              Text(direction, textDirection: TextDirection.rtl, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 5),
-              Text(gaze.isBlinking ? 'تم رصد رمشة' : 'المؤشر يتبع اتجاه النظر', textDirection: TextDirection.rtl, style: const TextStyle(color: Colors.white70)),
-              const SizedBox(height: 9),
-              ClipRRect(borderRadius: BorderRadius.circular(6), child: LinearProgressIndicator(value: confidence, minHeight: 6, backgroundColor: Colors.white24, color: const Color(0xFF55D6C8))),
-              const SizedBox(height: 5),
-              Text('جودة الإشارة ${(confidence * 100).round()}%', textDirection: TextDirection.rtl, style: const TextStyle(color: Colors.white70, fontSize: 12)),
-            ])),
-          )),
-          Positioned(left: cursorX, top: cursorY, child: Container(width: 30, height: 30, decoration: BoxDecoration(shape: BoxShape.circle, color: const Color(0x330A8F83), border: Border.all(color: const Color(0xFF0A8F83), width: 3), boxShadow: const [BoxShadow(color: Color(0x330A8F83), blurRadius: 12, spreadRadius: 2)]), child: const Center(child: CircleAvatar(radius: 4, backgroundColor: Color(0xFF0A8F83))))),
-          Positioned(left: 14, right: 14, bottom: 14, child: Card(
-            color: const Color(0xF21E293B),
-            child: Padding(padding: const EdgeInsets.all(12), child: Column(children: [
-              Row(children: [
-                Expanded(child: _Metric(label: 'X', value: gaze.xPx.toStringAsFixed(0), unit: 'px')),
-                const SizedBox(width: 8),
-                Expanded(child: _Metric(label: 'Y', value: gaze.yPx.toStringAsFixed(0), unit: 'px')),
-              ]),
-              const SizedBox(height: 10),
-              const Text('زر الإجراءات العائم يبقى متاحاً عند مغادرة التطبيق.', textAlign: TextAlign.center, style: TextStyle(color: Colors.white70, fontSize: 12)),
-              const SizedBox(height: 10),
-              SizedBox(width: double.infinity, child: FilledButton.icon(onPressed: tracking.stop, icon: const Icon(Icons.stop_circle_outlined), label: const Text('إيقاف التتبع'), style: FilledButton.styleFrom(backgroundColor: const Color(0xFF0A8F83), foregroundColor: Colors.white))),
-            ])),
-          )),
+          Positioned(
+            left: 12,
+            right: 12,
+            top: 12,
+            child: Card(
+              color: const Color(0xEE1E293B),
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(direction, textDirection: TextDirection.rtl, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
+                    const SizedBox(height: 4),
+                    Text(
+                      tracking.calibrated ? 'المعايرة: مكتملة' : 'المعايرة: افتراضية — نفّذ معايرة 9 نقاط',
+                      textDirection: TextDirection.rtl,
+                      style: const TextStyle(color: Colors.white70, fontSize: 12),
+                    ),
+                    Text(
+                      'المعالجة محلية • لا تُحفظ الصور ولا تُرفع',
+                      textDirection: TextDirection.rtl,
+                      style: const TextStyle(color: Colors.white70, fontSize: 12),
+                    ),
+                    Text(
+                      gaze == null
+                          ? 'جودة التتبع: لا توجد قراءة موثوقة'
+                          : 'جودة التتبع: ${(confidence * 100).round()}%',
+                      textDirection: TextDirection.rtl,
+                      style: const TextStyle(color: Colors.white70, fontSize: 11),
+                    ),
+                    const SizedBox(height: 7),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(6),
+                      child: LinearProgressIndicator(
+                        value: confidence,
+                        minHeight: 5,
+                        backgroundColor: Colors.white24,
+                        color: Colors.amber,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          if (gaze != null && !gaze.isBlinking)
+            Positioned(
+              left: cursorX,
+              top: cursorY,
+              child: Container(
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.amber, width: 3),
+                  color: Colors.amber.withOpacity(0.25),
+                ),
+              ),
+            ),
+          Positioned(
+            left: 12,
+            right: 12,
+            bottom: 12,
+            child: Card(
+              color: const Color(0xF21E293B),
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(children: [
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () async {
+                        await context.push('/calibration');
+                        await tracking.refreshCalibrationState();
+                      },
+                      icon: const Icon(Icons.center_focus_strong_rounded),
+                      label: const Text('معايرة النظر (9 نقاط)'),
+                      style: OutlinedButton.styleFrom(foregroundColor: Colors.white),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      onPressed: tracking.stop,
+                      icon: const Icon(Icons.pause_rounded),
+                      label: const Text('إيقاف التتبع'),
+                      style: FilledButton.styleFrom(backgroundColor: const Color(0xFF0A8F83), foregroundColor: Colors.white),
+                    ),
+                  ),
+                ]),
+              ),
+            ),
+          ),
         ]);
       }),
     );
@@ -156,47 +235,3 @@ class TrackingPage extends StatelessWidget {
     if (ny > .65) return 'النظر إلى الأسفل';
     return 'النظر إلى المركز';
   }
-}
-
-class _Metric extends StatelessWidget {
-  const _Metric({required this.label, required this.value, required this.unit});
-  final String label;
-  final String value;
-  final String unit;
-
-  @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(11),
-    decoration: BoxDecoration(color: const Color(0xFF334155), borderRadius: BorderRadius.circular(12)),
-    child: Row(children: [
-      Text(label, style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.w600)),
-      const Spacer(),
-      Text(value, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-      const SizedBox(width: 4),
-      Text(unit, style: const TextStyle(color: Colors.white70, fontSize: 11)),
-    ]),
-  );
-}
-
-class _TrackingGridPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = const Color(0x160A8F83)..strokeWidth = 1;
-    for (var i = 1; i < 3; i++) {
-      final x = size.width * i / 3;
-      final y = size.height * i / 3;
-      canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
-      canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
-    }
-    final center = Offset(size.width / 2, size.height / 2);
-    paint.color = const Color(0x220A8F83);
-    paint.style = PaintingStyle.stroke;
-    paint.strokeWidth = 1.5;
-    canvas.drawCircle(center, 42, paint);
-    canvas.drawLine(Offset(center.dx - 58, center.dy), Offset(center.dx + 58, center.dy), paint);
-    canvas.drawLine(Offset(center.dx, center.dy - 58), Offset(center.dx, center.dy + 58), paint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
