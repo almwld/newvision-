@@ -45,7 +45,9 @@ class TrackingPage extends StatelessWidget {
       OutlinedButton.icon(
         onPressed: () async {
           await context.push('/calibration');
+          if (!context.mounted) return;
           await p.refresh();
+          if (!context.mounted) return;
           await context.read<TrackingProvider>().refreshCalibrationState();
         },
         icon: const Icon(Icons.center_focus_strong_rounded),
