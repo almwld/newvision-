@@ -213,8 +213,9 @@ class FaceLandmarkerAnalyzer(
         val width = maxX - minX
         val height = maxY - minY
         if (!width.isFinite() || !height.isFinite() || width < 2f || height < 1f) return null
-        val irisX = iris.map { it.x() * imageWidth }.average().toFloat()
-        val irisY = iris.map { it.y() * imageHeight }.average().toFloat()
+        val irisCenter = iris.first()
+        val irisX = irisCenter.x() * imageWidth
+        val irisY = irisCenter.y() * imageHeight
         return Pair(
             ((irisX - minX) / width).coerceIn(0f, 1f),
             ((irisY - minY) / height).coerceIn(0f, 1f),
