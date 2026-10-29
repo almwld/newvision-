@@ -15,10 +15,11 @@ class CalibrationPage extends StatefulWidget {
 class _CalibrationPageState extends State<CalibrationPage> {
   late final EyeControlPlatform _platform = widget._platform ?? EyeControlPlatform();
 
+  // Match Mudabbir's nine-point gaze calibration geometry.
   static const targets = <Offset>[
-    Offset(0.10, 0.10), Offset(0.50, 0.10), Offset(0.90, 0.10),
-    Offset(0.10, 0.50), Offset(0.50, 0.50), Offset(0.90, 0.50),
-    Offset(0.10, 0.90), Offset(0.50, 0.90), Offset(0.90, 0.90),
+    Offset(0.15, 0.22), Offset(0.50, 0.22), Offset(0.85, 0.22),
+    Offset(0.15, 0.50), Offset(0.50, 0.50), Offset(0.85, 0.50),
+    Offset(0.15, 0.78), Offset(0.50, 0.78), Offset(0.85, 0.78),
   ];
 
   int _index = -1;
