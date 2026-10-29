@@ -8,6 +8,7 @@ import '../../data/models/gaze_sample_model.dart';
 class TrackingProvider extends ChangeNotifier with WidgetsBindingObserver {
   TrackingProvider({NativeBridge? bridge}) : _bridge = bridge ?? NativeBridge() {
     WidgetsBinding.instance.addObserver(this);
+    unawaited(refreshCalibrationState());
   }
 
   final NativeBridge _bridge;
@@ -15,6 +16,7 @@ class TrackingProvider extends ChangeNotifier with WidgetsBindingObserver {
   GazeSampleModel? _latest;
   bool _running = false;
   bool _starting = false;
+  bool _calibrated = false;
   String? _error;
   Timer? _staleTimer;
   DateTime? _lastSampleAt;
@@ -22,7 +24,17 @@ class TrackingProvider extends ChangeNotifier with WidgetsBindingObserver {
   GazeSampleModel? get latest => _latest;
   bool get running => _running;
   bool get starting => _starting;
+  bool get calibrated => _calibrated;
   String? get error => _error;
+
+  Future<void> refreshCalibrationState() async {
+    try {
+      _calibrated = await _bridge.isCalibrationReady();
+    } catch (_) {
+      _calibrated = false;
+    }
+    notifyListeners();
+  }
 
   Future<void> start() async {
     if (_running || _starting) return;
@@ -31,6 +43,11 @@ class TrackingProvider extends ChangeNotifier with WidgetsBindingObserver {
     notifyListeners();
 
     try {
+      _calibrated = await _bridge.isCalibrationReady();
+      if (!_calibrated) {
+        _error = 'أكمل معايرة النظر ذات النقاط التسع قبل بدء التحكم خارج التطبيق.';
+        return;
+      }
       final previousSubscription = _subscription;
       _subscription = _bridge.screenPoints.listen((map) {
         _lastSampleAt = DateTime.now();
@@ -112,6 +129,7 @@ class TrackingProvider extends ChangeNotifier with WidgetsBindingObserver {
 
   Future<void> _syncNativeTrackingState() async {
     try {
+      await refreshCalibrationState();
       if (await _bridge.isTrackingRunning()) return;
       _running = false;
       _starting = false;
