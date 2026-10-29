@@ -186,14 +186,16 @@ class FloatingButtonService : Service() {
         }
 
         var menuOpenAbove = false
+        var menuAnchorY = 0
         var dockedRight = false
         fun setMenuOpen(open: Boolean) {
             val p = params ?: return
             val buttonLayout = button.layoutParams as FrameLayout.LayoutParams
             val panelLayout = panel.layoutParams as FrameLayout.LayoutParams
             if (!open) {
-                if (panel.visibility == View.VISIBLE && menuOpenAbove) {
-                    p.y = (p.y + buttonLayout.topMargin).coerceAtMost(screenHeight - buttonSize)
+                if (panel.visibility == View.VISIBLE) {
+                    val displayHeight = ScreenGeometry.realMetrics(this).heightPixels
+                    p.y = menuAnchorY.coerceIn(0, (displayHeight - buttonSize).coerceAtLeast(0))
                 }
                 panel.visibility = View.GONE
                 menuOpenAbove = false
@@ -216,7 +218,9 @@ class FloatingButtonService : Service() {
                     p.x.coerceIn(0, (displayWidth - panelWidth).coerceAtLeast(0))
                 }
                 val buttonScreenY = if (menuOpenAbove) p.y + buttonLayout.topMargin else p.y
-                val below = screenHeight - (buttonScreenY + buttonSize + gapPx)
+                menuAnchorY = buttonScreenY
+                val displayHeight = ScreenGeometry.realMetrics(this).heightPixels
+                val below = displayHeight - (buttonScreenY + buttonSize + gapPx)
                 val above = buttonScreenY - gapPx
                 val openAbove = below < desiredPanelHeightPx && above > below
                 val available = if (openAbove) above else below
@@ -237,7 +241,7 @@ class FloatingButtonService : Service() {
                     panelLayout.topMargin = buttonSize + gapPx
                     buttonLayout.topMargin = 0
                     p.y = buttonScreenY.coerceAtMost(
-                        (screenHeight - buttonSize - gapPx - panelHeight).coerceAtLeast(0),
+                        (displayHeight - buttonSize - gapPx - panelHeight).coerceAtLeast(0),
                     )
                 }
                 p.height = buttonSize + gapPx + panelHeight
