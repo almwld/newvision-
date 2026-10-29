@@ -175,7 +175,7 @@ class FloatingButtonService : Service() {
         ).apply {
             gravity = Gravity.TOP or Gravity.LEFT
             x = (16 * density).toInt()
-            y = ((screenHeight - windowHeight) * 0.30f).toInt().coerceAtLeast(0)
+            y = ((screenHeight - buttonSize) * 0.30f).toInt().coerceAtLeast(0)
         }
 
         var menuOpenAbove = false
