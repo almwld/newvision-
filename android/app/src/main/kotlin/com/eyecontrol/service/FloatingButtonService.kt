@@ -5,6 +5,7 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
 import android.content.Intent
+import android.content.res.Configuration
 import android.graphics.PixelFormat
 import android.graphics.drawable.GradientDrawable
 import android.os.Build
@@ -51,6 +52,7 @@ class FloatingButtonService : Service() {
     private var buttonView: ImageView? = null
     private var panelView: LinearLayout? = null
     private var params: WindowManager.LayoutParams? = null
+    private var closeActionMenu: (() -> Unit)? = null
     private var density = 1f
     private var buttonSize = 60
 
@@ -252,6 +254,7 @@ class FloatingButtonService : Service() {
         }
 
         menuController = { open -> setMenuOpen(open) }
+        closeActionMenu = { setMenuOpen(false) }
         button.setOnTouchListener(FloatingTouchListener(button, panel, container) { setMenuOpen(it) })
         windowManager.addView(container, params)
         floatingView = container
@@ -356,12 +359,23 @@ class FloatingButtonService : Service() {
             .build()
     }
 
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        val p = params ?: return
+        closeActionMenu?.invoke()
+        val metrics = ScreenGeometry.realMetrics(this)
+        p.x = p.x.coerceIn(0, (metrics.widthPixels - p.width).coerceAtLeast(0))
+        p.y = p.y.coerceIn(0, (metrics.heightPixels - p.height).coerceAtLeast(0))
+        floatingView?.let { view -> runCatching { windowManager.updateViewLayout(view, p) } }
+    }
+
     override fun onDestroy() {
         isRunning = false
         floatingView?.let { view -> runCatching { windowManager.removeView(view) } }
         floatingView = null
         buttonView = null
         panelView = null
+        closeActionMenu = null
         super.onDestroy()
     }
 
