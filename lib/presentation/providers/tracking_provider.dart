@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import '../../data/datasources/native_bridge.dart';
 import '../../data/models/gaze_sample_model.dart';
