@@ -157,7 +157,8 @@ class FloatingButtonService : Service() {
 
         val windowWidth = panelWidth
         val screenHeight = resources.displayMetrics.heightPixels
-        val windowHeight = (buttonSize + (66 * density).toInt() + (maxOf(160f, (screenHeight / density - 58f - 80f).coerceAtMost(350f)) * density).toInt())
+        val maxPanelDp = (screenHeight / density - 58f - 80f).coerceAtMost(350f).coerceAtLeast(160f)
+        val windowHeight = (buttonSize + (66 * density).toInt() + (maxPanelDp * density).toInt())
             .coerceAtMost((screenHeight - (8 * density).toInt()).coerceAtLeast(buttonSize))
         params = WindowManager.LayoutParams(
             windowWidth, windowHeight,
@@ -167,7 +168,7 @@ class FloatingButtonService : Service() {
         ).apply {
             gravity = Gravity.TOP or Gravity.LEFT
             x = (16 * density).toInt()
-            y = ((resources.displayMetrics.heightPixels - windowHeight) * 0.30f).toInt().coerceAtLeast(0)
+            y = ((screenHeight - windowHeight) * 0.30f).toInt().coerceAtLeast(0)
         }
 
         button.setOnTouchListener(FloatingTouchListener(button, panel, container))
@@ -229,8 +230,10 @@ class FloatingButtonService : Service() {
                         button.layoutParams = (button.layoutParams as FrameLayout.LayoutParams).apply {
                             gravity = buttonGravity
                         }
+                        // Keep the action panel inside the display: open it inward from the
+                        // edge where the floating button was docked.
                         (panel.layoutParams as FrameLayout.LayoutParams).apply {
-                            gravity = Gravity.TOP or Gravity.LEFT
+                            gravity = Gravity.TOP or if (rightSide) Gravity.RIGHT else Gravity.LEFT
                             topMargin = buttonSize + (8 * density).toInt()
                         }
                         runCatching { windowManager.updateViewLayout(container, p) }
