@@ -120,9 +120,8 @@ class _CalibrationPageState extends State<CalibrationPage> {
             'targetY': point.dy,
           };
           // Prefer the same L2CS yaw/pitch calibration path used by the
-          // native inference pipeline, but retain iris-feature calibration
-          // when the optional L2CS model is unavailable or produces too few
-          // valid samples at any target.
+          // native inference pipeline when every target has enough stable
+          // angle samples; otherwise use the iris-feature calibration path.
           if (_currentAngles.length >= 8) {
             double averageAngle(String key) => _currentAngles
                 .map((item) => item[key]!)
