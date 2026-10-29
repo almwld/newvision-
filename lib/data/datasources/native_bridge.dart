@@ -29,6 +29,9 @@ class NativeBridge {
   Future<bool> isTrackingRunning() async =>
       await _methodChannel.invokeMethod<bool>('tracking.isRunning') ?? false;
 
+  Future<bool> isCalibrationReady() async =>
+      await _methodChannel.invokeMethod<bool>('calibration.isReady') ?? false;
+
   Future<bool> showFloatingButton() async =>
       await _methodChannel.invokeMethod<bool>('floating.show') ?? false;
 
