@@ -105,15 +105,19 @@ class FaceLandmarkerAnalyzer(
         val leftEye = eyeContour(landmarks, intArrayOf(362, 385, 387, 263, 373, 380))
         val blinking = blinkDetector.update(leftEye, rightEye)
 
-        val rawX = ((rightNormalized.first + leftNormalized.first) * 0.5f).coerceIn(0f, 1f)
-        val rawY = ((rightNormalized.second + leftNormalized.second) * 0.5f).coerceIn(0f, 1f)
-        // Mirror Mudabbir's quality scoring: reject confidence based on eye
-        // openness and left/right consistency, not merely the size of the face.
+        val rightRatio = eyeRatio(rightIris, rightEye, image.width, image.height) ?: return
+        val leftRatio = eyeRatio(leftIris, leftEye, image.width, image.height) ?: return
+        // Use the same eye-contour ratios as Mudabbir's GazeFusion pipeline.
+        // The horizontal inversion compensates for front-camera mirroring.
+        val rawX = (1f - (rightRatio.first + leftRatio.first) * 0.5f).coerceIn(0f, 1f)
+        val rawY = ((rightRatio.second + leftRatio.second) * 0.5f).coerceIn(0f, 1f)
+        // Score confidence from eye openness and left/right consistency, not
+        // merely the size of the face.
         val leftOpenness = eyeOpenness(leftEye, image.width, image.height) ?: 0f
         val rightOpenness = eyeOpenness(rightEye, image.width, image.height) ?: 0f
         val opennessQuality = (min(leftOpenness, rightOpenness) / 0.22f).coerceIn(0f, 1f)
-        val symmetryError = abs(leftNormalized.first - rightNormalized.first) +
-            abs(leftNormalized.second - rightNormalized.second)
+        val symmetryError = abs(leftRatio.first - rightRatio.first) +
+            abs(leftRatio.second - rightRatio.second)
         val symmetryQuality = (1f - symmetryError / 1.1f).coerceIn(0f, 1f)
         val confidence = (opennessQuality * symmetryQuality).coerceIn(0f, 1f)
         val pupilDiameter = (irisDiameter(leftIris) + irisDiameter(rightIris)) * 0.5f
@@ -194,6 +198,28 @@ class FaceLandmarkerAnalyzer(
         landmarks: List<NormalizedLandmark>,
         indices: IntArray,
     ): List<NormalizedLandmark> = indices.map { landmarks[it] }
+
+    private fun eyeRatio(
+        iris: List<NormalizedLandmark>,
+        contour: List<NormalizedLandmark>,
+        imageWidth: Int,
+        imageHeight: Int,
+    ): Pair<Float, Float>? {
+        if (iris.isEmpty() || contour.size < 6 || imageWidth <= 0 || imageHeight <= 0) return null
+        val minX = contour.minOf { it.x() } * imageWidth
+        val maxX = contour.maxOf { it.x() } * imageWidth
+        val minY = contour.minOf { it.y() } * imageHeight
+        val maxY = contour.maxOf { it.y() } * imageHeight
+        val width = maxX - minX
+        val height = maxY - minY
+        if (!width.isFinite() || !height.isFinite() || width < 2f || height < 1f) return null
+        val irisX = iris.map { it.x() * imageWidth }.average().toFloat()
+        val irisY = iris.map { it.y() * imageHeight }.average().toFloat()
+        return Pair(
+            ((irisX - minX) / width).coerceIn(0f, 1f),
+            ((irisY - minY) / height).coerceIn(0f, 1f),
+        )
+    }
 
     private fun eyeOpenness(
         contour: List<NormalizedLandmark>,
