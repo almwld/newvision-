@@ -286,7 +286,7 @@ class FloatingButtonService : Service() {
                     val dy = event.rawY - touchY
                     if (kotlin.math.abs(dx) > 9 * density || kotlin.math.abs(dy) > 9 * density) dragging = true
                     if (dragging) {
-                        val metrics = ScreenGeometry.realMetrics(this)
+                        val metrics = ScreenGeometry.realMetrics(this@FloatingButtonService)
                         p.x = (initialX + dx.toInt()).coerceIn(0, (metrics.widthPixels - p.width).coerceAtLeast(0))
                         p.y = (initialY + dy.toInt()).coerceIn(0, (metrics.heightPixels - p.height).coerceAtLeast(0))
                         runCatching { windowManager.updateViewLayout(container, p) }
@@ -302,7 +302,7 @@ class FloatingButtonService : Service() {
                             setMenuOpen(panel.visibility != View.VISIBLE)
                         }
                     } else {
-                        val metrics = ScreenGeometry.realMetrics(this)
+                        val metrics = ScreenGeometry.realMetrics(this@FloatingButtonService)
                         val rightSide = p.x + buttonSize / 2 > metrics.widthPixels / 2
                         dockedRight = rightSide
                         p.width = buttonSize
