@@ -6,6 +6,7 @@ import android.app.NotificationManager
 import android.app.Service
 import android.content.Intent
 import android.graphics.PixelFormat
+import android.graphics.drawable.GradientDrawable
 import android.os.Build
 import android.os.IBinder
 import android.provider.Settings
@@ -14,16 +15,18 @@ import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
-import android.graphics.drawable.GradientDrawable
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
+import android.widget.Toast
 import androidx.core.app.NotificationCompat
 import com.eyecontrol.MainActivity
 import com.eyecontrol.R
 
+/** Persistent, movable eye-control button. It deliberately lives in a system overlay,
+ * so the same controls remain available after the user leaves NewVision. */
 class FloatingButtonService : Service() {
     companion object {
         private const val TAG = "FloatingBtn"
@@ -34,6 +37,8 @@ class FloatingButtonService : Service() {
         const val ACTION_TAP_CENTER = "com.eyecontrol.TAP_CENTER"
         const val ACTION_SCROLL_UP = "com.eyecontrol.SCROLL_UP"
         const val ACTION_SCROLL_DOWN = "com.eyecontrol.SCROLL_DOWN"
+        const val ACTION_SCROLL_LEFT = "com.eyecontrol.SCROLL_LEFT"
+        const val ACTION_SCROLL_RIGHT = "com.eyecontrol.SCROLL_RIGHT"
 
         @Volatile var isRunning = false
             private set
@@ -41,17 +46,20 @@ class FloatingButtonService : Service() {
 
     private lateinit var windowManager: WindowManager
     private var floatingView: View? = null
+    private var buttonView: ImageView? = null
+    private var panelView: LinearLayout? = null
     private var params: WindowManager.LayoutParams? = null
+    private var density = 1f
+    private var buttonSize = 60
 
     override fun onCreate() {
         super.onCreate()
-        Log.d(TAG, "onCreate")
         isRunning = true
         createChannel()
         startForegroundCompat()
-
         if (!Settings.canDrawOverlays(this)) {
             Log.w(TAG, "Overlay permission missing")
+            Toast.makeText(this, "اسمح لـ NewVision بالظهور فوق التطبيقات أولاً", Toast.LENGTH_LONG).show()
             stopSelf()
             return
         }
@@ -62,109 +70,108 @@ class FloatingButtonService : Service() {
         val notification = buildNotification()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             startForeground(NOTIF_ID, notification, android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
-        } else {
-            startForeground(NOTIF_ID, notification)
-        }
+        } else startForeground(NOTIF_ID, notification)
     }
 
     private fun addFloatingButton() {
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
-        val density = resources.displayMetrics.density
-        val size = (60 * density).toInt()
-
+        density = resources.displayMetrics.density
+        buttonSize = (58 * density).toInt()
+        val panelWidth = (232 * density).toInt()
         val container = FrameLayout(this)
-        val imageView = ImageView(this).apply {
+
+        val button = ImageView(this).apply {
             setImageResource(R.drawable.ic_eye)
             setBackgroundResource(R.drawable.floating_button_bg)
-            setPadding((15 * density).toInt(), (15 * density).toInt(), (15 * density).toInt(), (15 * density).toInt())
-            contentDescription = "تحكم NewVision"
+            setPadding((14 * density).toInt(), (14 * density).toInt(), (14 * density).toInt(), (14 * density).toInt())
+            contentDescription = "قائمة إجراءات NewVision"
             isClickable = true
+            isFocusable = true
+            elevation = 12f * density
         }
-
         val panel = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding((8 * density).toInt(), (8 * density).toInt(), (8 * density).toInt(), (8 * density).toInt())
+            setPadding((9 * density).toInt(), (9 * density).toInt(), (9 * density).toInt(), (9 * density).toInt())
             background = GradientDrawable().apply {
-                setColor(0xF2FFFFFF.toInt())
-                cornerRadius = 18f * density
-                setStroke((1 * density).toInt(), 0x330A8F83)
+                setColor(0xF51E293B.toInt())
+                cornerRadius = 20f * density
+                setStroke((1.2f * density).toInt(), 0xFF0A8F83.toInt())
             }
             visibility = View.GONE
-            elevation = 10f * density
+            elevation = 14f * density
         }
 
-        fun actionButton(label: String, action: String): TextView {
-            return TextView(this).apply {
+        fun actionButton(label: String, action: String, danger: Boolean = false): TextView =
+            TextView(this).apply {
                 text = label
-                textSize = 13f
-                setTextColor(0xFF263238.toInt())
+                textSize = 14f
+                setTextColor(if (danger) 0xFFFFD8D8.toInt() else 0xFFFFFFFF.toInt())
                 gravity = Gravity.CENTER
-                setPadding((14 * density).toInt(), (9 * density).toInt(), (14 * density).toInt(), (9 * density).toInt())
+                minHeight = (42 * density).toInt()
+                setPadding((12 * density).toInt(), (9 * density).toInt(), (12 * density).toInt(), (9 * density).toInt())
                 isClickable = true
+                isFocusable = true
                 background = GradientDrawable().apply {
-                    setColor(0xFFF4F6F7.toInt())
-                    cornerRadius = 12f * density
+                    setColor(if (danger) 0xFF6B2630.toInt() else 0xFF334155.toInt())
+                    cornerRadius = 13f * density
+                    setStroke((1 * density).toInt(), if (danger) 0x66FF8080 else 0x440A8F83)
                 }
                 setOnClickListener {
                     sendBroadcast(Intent(action).setPackage(packageName))
                     panel.visibility = View.GONE
                 }
-                layoutParams = LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.WRAP_CONTENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT,
-                ).apply {
-                    bottomMargin = (5 * density).toInt()
+                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                    bottomMargin = (6 * density).toInt()
                 }
             }
-        }
 
+        panel.addView(TextView(this).apply {
+            text = "التحكم بالنظر"
+            textSize = 14f
+            setTextColor(0xFF7DE0D4.toInt())
+            gravity = Gravity.CENTER
+            setPadding(4, (3 * density).toInt(), 4, (9 * density).toInt())
+        })
         panel.addView(actionButton("تشغيل / إيقاف التتبع", ACTION_TOGGLE))
-        panel.addView(actionButton("نقرة سريعة", ACTION_TAP_CENTER))
+        panel.addView(actionButton("نقرة في المنتصف", ACTION_TAP_CENTER))
         panel.addView(actionButton("تمرير لأعلى", ACTION_SCROLL_UP))
         panel.addView(actionButton("تمرير لأسفل", ACTION_SCROLL_DOWN))
-        panel.addView(actionButton("إيقاف طارئ", ACTION_EMERGENCY))
+        panel.addView(actionButton("تمرير لليمين", ACTION_SCROLL_RIGHT))
+        panel.addView(actionButton("تمرير لليسار", ACTION_SCROLL_LEFT))
+        panel.addView(actionButton("إيقاف طارئ", ACTION_EMERGENCY, danger = true))
 
-        container.addView(
-            panel,
-            FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                Gravity.TOP or Gravity.START,
-            ).apply {
-                leftMargin = 0
-                topMargin = size + (8 * density).toInt()
-            },
-        )
-        container.addView(
-            imageView,
-            FrameLayout.LayoutParams(size, size, Gravity.TOP or Gravity.START),
-        )
+        container.addView(panel, FrameLayout.LayoutParams(panelWidth, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.TOP or Gravity.LEFT).apply {
+            topMargin = buttonSize + (8 * density).toInt()
+        })
+        container.addView(button, FrameLayout.LayoutParams(buttonSize, buttonSize, Gravity.TOP or Gravity.LEFT))
 
+        val windowWidth = panelWidth
+        val windowHeight = (buttonSize + 430 * density).toInt()
         params = WindowManager.LayoutParams(
-            (240 * density).toInt(),
-            (size + 300 * density).toInt(),
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
-                WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
-            else
-                WindowManager.LayoutParams.TYPE_PHONE,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+            windowWidth, windowHeight,
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY else WindowManager.LayoutParams.TYPE_PHONE,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
             PixelFormat.TRANSLUCENT,
         ).apply {
-            gravity = Gravity.TOP or Gravity.START
-            x = 24
-            y = 300
+            gravity = Gravity.TOP or Gravity.LEFT
+            x = (16 * density).toInt()
+            y = (resources.displayMetrics.heightPixels * 0.30f).toInt().coerceAtLeast((40 * density).toInt())
         }
 
-        imageView.setOnTouchListener(FloatingTouchListener(panel))
+        button.setOnTouchListener(FloatingTouchListener(button, panel, container))
         windowManager.addView(container, params)
         floatingView = container
-        Log.d(TAG, "Floating control added")
+        buttonView = button
+        panelView = panel
     }
 
-    private inner class FloatingTouchListener(private val panel: View) : View.OnTouchListener {
-        private var initX = 0
-        private var initY = 0
+    private inner class FloatingTouchListener(
+        private val button: ImageView,
+        private val panel: LinearLayout,
+        private val container: View,
+    ) : View.OnTouchListener {
+        private var initialX = 0
+        private var initialY = 0
         private var touchX = 0f
         private var touchY = 0f
         private var dragging = false
@@ -174,8 +181,8 @@ class FloatingButtonService : Service() {
             val p = params ?: return false
             when (event.actionMasked) {
                 MotionEvent.ACTION_DOWN -> {
-                    initX = p.x
-                    initY = p.y
+                    initialX = p.x
+                    initialY = p.y
                     touchX = event.rawX
                     touchY = event.rawY
                     dragging = false
@@ -185,28 +192,35 @@ class FloatingButtonService : Service() {
                 MotionEvent.ACTION_MOVE -> {
                     val dx = event.rawX - touchX
                     val dy = event.rawY - touchY
-                    if (kotlin.math.abs(dx) > 10 || kotlin.math.abs(dy) > 10) dragging = true
+                    if (kotlin.math.abs(dx) > 9 * density || kotlin.math.abs(dy) > 9 * density) dragging = true
                     if (dragging) {
-                        p.x = initX + dx.toInt()
-                        p.y = initY + dy.toInt()
-                        windowManager.updateViewLayout(v, p)
+                        val metrics = resources.displayMetrics
+                        p.x = (initialX + dx.toInt()).coerceIn(0, (metrics.widthPixels - p.width).coerceAtLeast(0))
+                        p.y = (initialY + dy.toInt()).coerceIn(0, (metrics.heightPixels - buttonSize).coerceAtLeast(0))
+                        runCatching { windowManager.updateViewLayout(container, p) }
                     }
                     return true
                 }
                 MotionEvent.ACTION_UP -> {
                     val elapsed = System.currentTimeMillis() - downTime
                     if (!dragging) {
-                        if (elapsed > 800) {
-                            Log.d(TAG, "Emergency stop")
+                        if (elapsed > 850) {
                             sendBroadcast(Intent(ACTION_EMERGENCY).setPackage(packageName))
                         } else {
                             panel.visibility = if (panel.visibility == View.VISIBLE) View.GONE else View.VISIBLE
-                            Log.d(TAG, "Control panel toggled")
                         }
                     } else {
-                        val screenWidth = resources.displayMetrics.widthPixels
-                        p.x = if (p.x > screenWidth / 2) screenWidth - v.width else 0
-                        windowManager.updateViewLayout(v, p)
+                        val metrics = resources.displayMetrics
+                        val rightSide = p.x + p.width / 2 > metrics.widthPixels / 2
+                        p.x = if (rightSide) (metrics.widthPixels - p.width).coerceAtLeast(0) else 0
+                        button.layoutParams = (button.layoutParams as FrameLayout.LayoutParams).apply {
+                            gravity = (Gravity.TOP or if (rightSide) Gravity.RIGHT else Gravity.LEFT)
+                        }
+                        (panel.layoutParams as FrameLayout.LayoutParams).apply {
+                            gravity = Gravity.TOP or Gravity.LEFT
+                            topMargin = buttonSize + (8 * density).toInt()
+                        }
+                        runCatching { windowManager.updateViewLayout(container, p) }
                     }
                     return true
                 }
@@ -218,12 +232,8 @@ class FloatingButtonService : Service() {
     private fun createChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             getSystemService(NotificationManager::class.java).createNotificationChannel(
-                NotificationChannel(
-                    CHANNEL_ID,
-                    "NewVision Floating Control",
-                    NotificationManager.IMPORTANCE_LOW,
-                ).apply {
-                    description = "زر عائم للتحكم بتتبع العين"
+                NotificationChannel(CHANNEL_ID, "NewVision Floating Control", NotificationManager.IMPORTANCE_LOW).apply {
+                    description = "زر عائم للتحكم بتتبع العين خارج التطبيق"
                 },
             )
         }
@@ -233,16 +243,12 @@ class FloatingButtonService : Service() {
         val intent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
         }
-        val pending = android.app.PendingIntent.getActivity(
-            this,
-            0,
-            intent,
-            android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT,
-        )
+        val pending = android.app.PendingIntent.getActivity(this, 0, intent,
+            android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT)
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_eye)
             .setContentTitle("NewVision نشط")
-            .setContentText("الزر العائم متاح فوق التطبيقات")
+            .setContentText("زر التحكم العائم متاح فوق التطبيقات")
             .setContentIntent(pending)
             .setOngoing(true)
             .setPriority(NotificationCompat.PRIORITY_LOW)
@@ -250,17 +256,14 @@ class FloatingButtonService : Service() {
     }
 
     override fun onDestroy() {
-        Log.d(TAG, "onDestroy")
         isRunning = false
-        floatingView?.let {
-            runCatching { windowManager.removeView(it) }
-        }
+        floatingView?.let { view -> runCatching { windowManager.removeView(view) } }
         floatingView = null
+        buttonView = null
+        panelView = null
         super.onDestroy()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int = Service.START_STICKY
-
     override fun onBind(intent: Intent?): IBinder? = null
-
 }
