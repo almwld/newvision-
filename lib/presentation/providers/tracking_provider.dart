@@ -137,6 +137,11 @@ class TrackingProvider extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   @override
+  void didChangeMetrics() {
+    unawaited(refreshCalibrationState());
+  }
+
+  @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       unawaited(refreshCalibrationState());
