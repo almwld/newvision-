@@ -10,10 +10,10 @@ import android.view.WindowManager
  * system bars, causing gaze clicks to drift vertically outside the app.
  */
 object ScreenGeometry {
+    @Suppress("DEPRECATION")
     fun realMetrics(context: Context): DisplayMetrics {
         val metrics = DisplayMetrics()
         val manager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
-        @Suppress("DEPRECATION")
         manager.defaultDisplay.getRealMetrics(metrics)
         return metrics
     }
