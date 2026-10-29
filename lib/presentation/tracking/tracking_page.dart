@@ -119,10 +119,20 @@ class TrackingPage extends StatelessWidget {
                 Icon(
                   Icons.circle,
                   size: 10,
-                  color: gaze == null ? Colors.orange : (gaze.isBlinking ? Colors.orange : const Color(0xFF0A8F83)),
+                  color: gaze == null || gaze.isBlinking || confidence < 0.45
+                      ? Colors.orange
+                      : const Color(0xFF0A8F83),
                 ),
                 const SizedBox(width: 6),
-                Text(gaze == null ? 'بانتظار العين' : (gaze.isBlinking ? 'رمشة' : 'نشط')),
+                Text(
+                  gaze == null
+                      ? 'بانتظار العين'
+                      : gaze.isBlinking
+                          ? 'رمشة'
+                          : confidence < 0.45
+                              ? 'ثبّت النظر'
+                              : 'نشط',
+                ),
               ]),
             ),
           ),
@@ -183,7 +193,7 @@ class TrackingPage extends StatelessWidget {
               ),
             ),
           ),
-          if (gaze != null && !gaze.isBlinking)
+          if (gaze != null && !gaze.isBlinking && confidence >= 0.45)
             Positioned(
               left: cursorX,
               top: cursorY,
