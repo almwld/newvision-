@@ -18,6 +18,7 @@ import com.eyecontrol.data.calibration.CalibrationFeatureSample
 import com.eyecontrol.data.calibration.CalibrationSample
 import com.eyecontrol.data.calibration.CalibrationAngleSample
 import com.eyecontrol.data.camera.TrackingRuntime
+import com.eyecontrol.data.camera.TrackingPreviewPlatformViewFactory
 import com.eyecontrol.data.repository.NativeCalibrationRepository
 import com.eyecontrol.data.repository.NativeGazeRepository
 import com.eyecontrol.data.settings.GazeZoneSettings
@@ -51,6 +52,10 @@ class MainActivity : FlutterActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        flutterEngine.platformViewsController.registry.registerViewFactory(
+            "com.eyecontrol/camera_preview",
+            TrackingPreviewPlatformViewFactory(),
+        )
         EventChannel(
             flutterEngine.dartExecutor.binaryMessenger,
             "com.eyecontrol/gaze_screen_point",
