@@ -102,6 +102,8 @@ class FloatingButtonService : Service() {
             elevation = 14f * density
         }
 
+        var menuController: ((Boolean) -> Unit)? = null
+
         fun actionButton(label: String, action: String, danger: Boolean = false): TextView =
             TextView(this).apply {
                 text = label
@@ -119,7 +121,7 @@ class FloatingButtonService : Service() {
                 }
                 setOnClickListener {
                     sendBroadcast(Intent(action).setPackage(packageName))
-                    setMenuOpen(false)
+                    menuController?.invoke(false)
                 }
                 layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
                     bottomMargin = (6 * density).toInt()
@@ -228,6 +230,7 @@ class FloatingButtonService : Service() {
             runCatching { windowManager.updateViewLayout(container, p) }
         }
 
+        menuController = ::setMenuOpen
         button.setOnTouchListener(FloatingTouchListener(button, panel, container) { setMenuOpen(it) })
         windowManager.addView(container, params)
         floatingView = container
