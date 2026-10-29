@@ -20,13 +20,13 @@ class TrackingPreviewPlatformView(context: Context) : PlatformView {
     }
 
     init {
-        TrackingRuntime.setPreviewView(previewView)
+        TrackingPreviewRegistry.set(previewView)
     }
 
     override fun getView(): View = previewView
 
     override fun dispose() {
-        TrackingRuntime.setPreviewView(null)
+        TrackingPreviewRegistry.set(null)
     }
 }
 
