@@ -15,7 +15,10 @@ class PermissionProvider extends ChangeNotifier with WidgetsBindingObserver {
   bool loading = false;
   String? error;
 
-  bool get ready => camera && overlay && accessibility && notifications;
+  // Notifications are recommended for a transparent foreground service, but
+  // Android does not require POST_NOTIFICATIONS to start an FGS. Keep tracking
+  // available when users decline notification permission.
+  bool get ready => camera && overlay && accessibility;
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
@@ -29,8 +32,6 @@ class PermissionProvider extends ChangeNotifier with WidgetsBindingObserver {
       camera = await Permission.camera.isGranted;
       overlay = await _platform.isOverlayGranted();
       accessibility = await _platform.isAccessibilityEnabled();
-      // On Android versions without runtime notification permission, the plugin
-      // reports it as granted; on Android 13+ we show the real system state.
       notifications = await Permission.notification.isGranted;
       error = null;
     } catch (e) {
