@@ -3,13 +3,20 @@ package com.eyecontrol.service
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.Manifest
 import android.app.Service
+import android.content.ComponentName
+import android.content.pm.PackageManager
+import android.provider.Settings
+import android.view.accessibility.AccessibilityManager
+import android.accessibilityservice.AccessibilityServiceInfo
 import android.content.Intent
 import android.content.res.Configuration
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleService
 import androidx.lifecycle.lifecycleScope
 import com.eyecontrol.MainActivity
@@ -48,6 +55,7 @@ class TrackingForegroundService : LifecycleService() {
     }
 
     private var cameraController: CameraController? = null
+    private var cameraStarted = false
     @Volatile private var calibrationMode = false
     private var gazeControlLoopStarted = false
     private lateinit var settingsStorage: SettingsStorage
@@ -89,7 +97,6 @@ class TrackingForegroundService : LifecycleService() {
         }
         sharedPreferences.registerOnSharedPreferenceChangeListener(preferencesListener)
         cameraController = CameraController(this, this, TrackingRuntime.repository)
-        cameraController?.start()
     }
 
     private fun startAsForeground() {
@@ -216,19 +223,53 @@ class TrackingForegroundService : LifecycleService() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        calibrationMode = intent?.getBooleanExtra(EXTRA_CALIBRATION_MODE, false) ?: false
+        val requestedCalibration = intent?.getBooleanExtra(EXTRA_CALIBRATION_MODE, false) ?: false
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+            com.eyecontrol.core.logging.AppLogger.e("Tracking service stopped: camera permission is missing")
+            stopSelf(startId)
+            return START_NOT_STICKY
+        }
+        if (!requestedCalibration) {
+            if (!Settings.canDrawOverlays(this) || !isAccessibilityEnabled() ||
+                !TrackingRuntime.calibrationRepository.hasActiveModel()
+            ) {
+                com.eyecontrol.core.logging.AppLogger.e(
+                    "Tracking service stopped: overlay, accessibility, or calibration is unavailable",
+                )
+                stopSelf(startId)
+                return START_NOT_STICKY
+            }
+        }
+
+        calibrationMode = requestedCalibration
         if (calibrationMode) {
             stopService(Intent(this, OverlayCursorService::class.java))
         } else {
-            if (android.provider.Settings.canDrawOverlays(this)) {
-                startService(Intent(this, OverlayCursorService::class.java))
-            }
+            runCatching { startService(Intent(this, OverlayCursorService::class.java)) }
+                .onFailure { error ->
+                    com.eyecontrol.core.logging.AppLogger.e("Unable to start gaze cursor overlay", error)
+                }
             if (!gazeControlLoopStarted) {
                 gazeControlLoopStarted = true
                 startGazeControlLoop()
             }
         }
+
+        if (!cameraStarted) {
+            cameraStarted = true
+            cameraController?.start()
+        }
         return Service.START_STICKY
+    }
+
+    private fun isAccessibilityEnabled(): Boolean {
+        val manager = getSystemService(AccessibilityManager::class.java) ?: return false
+        val expected = ComponentName(this, TouchAccessibilityService::class.java)
+        return manager.getEnabledAccessibilityServiceList(AccessibilityServiceInfo.FEEDBACK_ALL_MASK)
+            .any { service ->
+                val info = service.resolveInfo.serviceInfo
+                ComponentName(info.packageName, info.name) == expected
+            }
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
