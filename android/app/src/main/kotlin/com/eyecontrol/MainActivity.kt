@@ -105,6 +105,7 @@ class MainActivity : FlutterActivity() {
                             }
                         }
                         "tracking.isRunning" -> result.success(com.eyecontrol.service.TrackingForegroundService.isRunning)
+                        "cursor.isRunning" -> result.success(com.eyecontrol.service.OverlayCursorService.isRunning)
                         "camera.stop" -> {
                             stopTrackingService()
                             gazeRepository.reset()
