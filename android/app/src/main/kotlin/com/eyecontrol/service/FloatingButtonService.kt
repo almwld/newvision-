@@ -24,6 +24,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.core.app.NotificationCompat
 import com.eyecontrol.MainActivity
+import com.eyecontrol.core.platform.ScreenGeometry
 import com.eyecontrol.R
 
 /** Persistent, movable eye-control button. It deliberately lives in a system overlay,
@@ -69,14 +70,17 @@ class FloatingButtonService : Service() {
 
     private fun startForegroundCompat() {
         val notification = buildNotification()
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             startForeground(NOTIF_ID, notification, android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
-        } else startForeground(NOTIF_ID, notification)
+        } else {
+            // SPECIAL_USE foreground-service types are only supported on Android 14+.
+            startForeground(NOTIF_ID, notification)
+        }
     }
 
     private fun addFloatingButton() {
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
-        density = resources.displayMetrics.density
+        density = ScreenGeometry.realMetrics(this).density
         buttonSize = (58 * density).toInt()
         val panelWidth = (232 * density).toInt()
         val container = FrameLayout(this)
