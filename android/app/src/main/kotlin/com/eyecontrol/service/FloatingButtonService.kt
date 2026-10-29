@@ -233,7 +233,7 @@ class FloatingButtonService : Service() {
                         // Keep the action panel inside the display: open it inward from the
                         // edge where the floating button was docked.
                         (panel.layoutParams as FrameLayout.LayoutParams).apply {
-                            gravity = Gravity.TOP or if (rightSide) Gravity.RIGHT else Gravity.LEFT
+                            gravity = if (rightSide) (Gravity.TOP or Gravity.RIGHT) else (Gravity.TOP or Gravity.LEFT)
                             topMargin = buttonSize + (8 * density).toInt()
                         }
                         runCatching { windowManager.updateViewLayout(container, p) }
