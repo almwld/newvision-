@@ -93,6 +93,10 @@ class MainActivity : FlutterActivity() {
                             val forCalibration = call.argument<Boolean>("forCalibration") ?: false
                             if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
                                 result.error("CAMERA_PERMISSION", "Camera permission is required.", null)
+                            } else if (!forCalibration && !Settings.canDrawOverlays(this)) {
+                                result.error("OVERLAY_PERMISSION", "Allow NewVision to display over other apps before tracking.", null)
+                            } else if (!forCalibration && !isAccessibilityEnabled()) {
+                                result.error("ACCESSIBILITY_PERMISSION", "Enable NewVision Accessibility to control taps and swipes outside the app.", null)
                             } else if (!forCalibration && !calibrationRepository.hasActiveModel()) {
                                 result.error("CALIBRATION_REQUIRED", "Calibration must be completed before tracking starts.", null)
                             } else {
