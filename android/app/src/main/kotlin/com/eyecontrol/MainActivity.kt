@@ -288,6 +288,11 @@ class MainActivity : FlutterActivity() {
         )
     }
 
+    private fun stopTrackingService() {
+        stopService(Intent(this, com.eyecontrol.service.TrackingForegroundService::class.java))
+        stopService(Intent(this, com.eyecontrol.service.OverlayCursorService::class.java))
+    }
+
     private fun startTrackingService(forCalibration: Boolean = false) {
         val intent = Intent(this, com.eyecontrol.service.TrackingForegroundService::class.java)
             .putExtra(com.eyecontrol.service.TrackingForegroundService.EXTRA_CALIBRATION_MODE, forCalibration)
