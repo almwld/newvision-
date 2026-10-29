@@ -11,6 +11,7 @@ import android.view.View
 import android.view.WindowManager
 import android.widget.FrameLayout
 import com.eyecontrol.domain.model.ScreenPoint
+import com.eyecontrol.core.platform.ScreenGeometry
 import java.util.concurrent.atomic.AtomicReference
 
 /** The gaze cursor is a non-touchable system overlay, so it follows gaze on top
@@ -73,7 +74,7 @@ class OverlayCursorService : Service() {
 
     private fun moveTo(x: Int, y: Int) {
         val view = cursor ?: return
-        val metrics = resources.displayMetrics
+        val metrics = ScreenGeometry.realMetrics(this)
         params.x = x.coerceIn(0, (metrics.widthPixels - cursorSize).coerceAtLeast(0))
         params.y = y.coerceIn(0, (metrics.heightPixels - cursorSize).coerceAtLeast(0))
         runCatching { windowManager.updateViewLayout(view, params) }
