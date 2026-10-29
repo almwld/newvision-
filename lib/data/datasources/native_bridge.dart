@@ -26,6 +26,9 @@ class NativeBridge {
   Future<void> startCamera() => _methodChannel.invokeMethod<void>('camera.start');
   Future<void> stopCamera() => _methodChannel.invokeMethod<void>('camera.stop');
 
+  Future<bool> isTrackingRunning() async =>
+      await _methodChannel.invokeMethod<bool>('tracking.isRunning') ?? false;
+
   Future<bool> showFloatingButton() async =>
       await _methodChannel.invokeMethod<bool>('floating.show') ?? false;
 
