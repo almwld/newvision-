@@ -90,11 +90,22 @@ class TrackingPage extends StatelessWidget {
     final confidence = (gaze?.confidence ?? 0.0).clamp(0.0, 1.0);
     final media = MediaQuery.of(context);
     final dpr = media.devicePixelRatio;
+    final screenWidthPx = tracking.screenWidthPx > 0
+        ? tracking.screenWidthPx.toDouble()
+        : media.size.width * dpr;
+    final screenHeightPx = tracking.screenHeightPx > 0
+        ? tracking.screenHeightPx.toDouble()
+        : media.size.height * dpr;
+    // Native gaze points are in physical display pixels. The tracking preview
+    // lives below the status bar and AppBar, so convert to Flutter logical pixels
+    // before drawing its local cursor.
     final screenX = gaze == null ? null : gaze.xPx / dpr;
-    final screenY = gaze == null ? null : gaze.yPx / dpr - media.padding.top - kToolbarHeight;
+    final screenY = gaze == null
+        ? null
+        : gaze.yPx / dpr - media.padding.top - kToolbarHeight;
     final direction = gaze == null
         ? 'لم يُكتشف النظر بعد'
-        : _direction(gaze.xPx, gaze.yPx, media.size.width * dpr, media.size.height * dpr);
+        : _direction(gaze.xPx, gaze.yPx, screenWidthPx, screenHeightPx);
 
     return Scaffold(
       backgroundColor: const Color(0xFF0A1720),
