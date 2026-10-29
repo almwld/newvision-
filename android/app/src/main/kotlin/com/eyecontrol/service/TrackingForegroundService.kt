@@ -69,6 +69,11 @@ class TrackingForegroundService : LifecycleService() {
 
     override fun onCreate() {
         super.onCreate()
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+            com.eyecontrol.core.logging.AppLogger.e("Tracking service not started: camera permission is missing")
+            stopSelf()
+            return
+        }
         isRunning = true
         TrackingRuntime.initialize(this)
         createChannel()
@@ -213,7 +218,9 @@ class TrackingForegroundService : LifecycleService() {
     }
 
     override fun onDestroy() {
-        sharedPreferences.unregisterOnSharedPreferenceChangeListener(preferencesListener)
+        if (::sharedPreferences.isInitialized && ::preferencesListener.isInitialized) {
+            sharedPreferences.unregisterOnSharedPreferenceChangeListener(preferencesListener)
+        }
         cameraController?.close()
         cameraController = null
         TrackingRuntime.reset()
