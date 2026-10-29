@@ -29,6 +29,18 @@ class NativeBridge {
   Future<bool> isTrackingRunning() async =>
       await _methodChannel.invokeMethod<bool>('tracking.isRunning') ?? false;
 
+  Future<({int width, int height})> screenSize() async {
+    final value = await _methodChannel.invokeMethod<dynamic>('screen.size');
+    if (value is! Map) {
+      throw StateError('Native physical screen size is unavailable.');
+    }
+    return (
+      width: (value['width'] as num).toInt(),
+      height: (value['height'] as num).toInt(),
+    );
+  }
+
+
   Future<bool> isCalibrationReady() async =>
       await _methodChannel.invokeMethod<bool>('calibration.isReady') ?? false;
 
