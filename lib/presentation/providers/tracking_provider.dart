@@ -89,19 +89,21 @@ class TrackingProvider extends ChangeNotifier with WidgetsBindingObserver {
       // remains available above other apps and owns the external action menu.
       try {
         final requested = await _bridge.showFloatingButton();
-        var shown = false;
+        var floatingReady = false;
+        var cursorReady = false;
         // The platform call acknowledges the request before Android finishes
-        // attaching the overlay window. Allow creation to settle, then verify it.
+        // attaching either overlay. Verify both system windows actually exist.
         await Future<void>.delayed(const Duration(milliseconds: 400));
-        for (var attempt = 0; attempt < 4; attempt++) {
-          if (await _bridge.isFloatingButtonRunning()) {
-            shown = true;
-            break;
+        for (var attempt = 0; attempt < 5; attempt++) {
+          floatingReady = await _bridge.isFloatingButtonRunning();
+          cursorReady = await _bridge.isCursorRunning();
+          if (floatingReady && cursorReady) break;
+          if (attempt < 4) {
+            await Future<void>.delayed(const Duration(milliseconds: 200));
           }
-          await Future<void>.delayed(const Duration(milliseconds: 200));
         }
-        if (!requested || !shown) {
-          _error = 'التتبع يعمل، لكن الزر العائم لم يبدأ. تحقق من إذن الظهور فوق التطبيقات ثم أعد المحاولة.';
+        if (!requested || !floatingReady || !cursorReady) {
+          _error = 'التتبع يعمل، لكن الزر العائم أو مؤشر النظر لم يبدأ. تحقق من إذن الظهور فوق التطبيقات ثم أعد المحاولة.';
         }
       } catch (error) {
         _error = 'التتبع يعمل داخل التطبيق، وتعذر تشغيل الزر العائم: $error';
