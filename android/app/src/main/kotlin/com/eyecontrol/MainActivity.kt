@@ -39,7 +39,6 @@ class MainActivity : FlutterActivity() {
     private lateinit var calibrationRepository: NativeCalibrationRepository
     private lateinit var settingsStorage: SettingsStorage
     private var currentSettings = GazeZoneSettings()
-    private var cameraRequested = false
     private var gazeEventJob: Job? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -101,14 +100,12 @@ class MainActivity : FlutterActivity() {
                             } else if (!forCalibration && !calibrationRepository.hasActiveModel()) {
                                 result.error("CALIBRATION_REQUIRED", "Calibration must be completed before tracking starts.", null)
                             } else {
-                                cameraRequested = true
                                 startTrackingService(forCalibration)
                                 result.success(null)
                             }
                         }
                         "tracking.isRunning" -> result.success(com.eyecontrol.service.TrackingForegroundService.isRunning)
                         "camera.stop" -> {
-                            cameraRequested = false
                             stopTrackingService()
                             gazeRepository.reset()
                             result.success(null)
@@ -318,13 +315,6 @@ class MainActivity : FlutterActivity() {
     override fun onPause() {
         // TrackingForegroundService owns the camera; Activity lifecycle must not stop it.
         super.onPause()
-    }
-
-    override fun onResume() {
-        super.onResume()
-        if (cameraRequested && !com.eyecontrol.service.TrackingForegroundService.isRunning) {
-            startTrackingService()
-        }
     }
 
     override fun onDestroy() {
