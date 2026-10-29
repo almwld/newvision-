@@ -93,14 +93,6 @@ class FaceLandmarkerAnalyzer(
         val leftIris = listOf(
             landmarks[468], landmarks[469], landmarks[470], landmarks[471], landmarks[472],
         )
-        val rightNormalized = irisNormalizer.normalize(
-            rightIris, landmarks[33] to landmarks[133],
-        )
-        val leftNormalized = irisNormalizer.normalize(
-            leftIris, landmarks[362] to landmarks[263],
-        )
-        if (rightNormalized == null || leftNormalized == null) return
-
         val rightEye = eyeContour(landmarks, intArrayOf(33, 160, 158, 133, 153, 144))
         val leftEye = eyeContour(landmarks, intArrayOf(362, 385, 387, 263, 373, 380))
         val blinking = blinkDetector.update(leftEye, rightEye)
@@ -142,10 +134,10 @@ class FaceLandmarkerAnalyzer(
             GazeSample(
                 rawX = rawX,
                 rawY = rawY,
-                leftIrisX = leftNormalized.first,
-                leftIrisY = leftNormalized.second,
-                rightIrisX = rightNormalized.first,
-                rightIrisY = rightNormalized.second,
+                leftIrisX = leftRatio.first,
+                leftIrisY = leftRatio.second,
+                rightIrisX = rightRatio.first,
+                rightIrisY = rightRatio.second,
                 confidence = confidence,
                 pupilDiameter = pupilDiameter,
                 eyeOpen = !blinking,
