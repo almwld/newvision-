@@ -17,6 +17,8 @@ class TrackingProvider extends ChangeNotifier with WidgetsBindingObserver {
   bool _running = false;
   bool _starting = false;
   bool _calibrated = false;
+  int _screenWidthPx = 0;
+  int _screenHeightPx = 0;
   String? _error;
   Timer? _staleTimer;
   DateTime? _lastSampleAt;
@@ -25,6 +27,8 @@ class TrackingProvider extends ChangeNotifier with WidgetsBindingObserver {
   bool get running => _running;
   bool get starting => _starting;
   bool get calibrated => _calibrated;
+  int get screenWidthPx => _screenWidthPx;
+  int get screenHeightPx => _screenHeightPx;
   String? get error => _error;
 
   Future<void> refreshCalibrationState() async {
@@ -32,6 +36,13 @@ class TrackingProvider extends ChangeNotifier with WidgetsBindingObserver {
       _calibrated = await _bridge.isCalibrationReady();
     } catch (_) {
       _calibrated = false;
+    }
+    try {
+      final size = await _bridge.screenSize();
+      _screenWidthPx = size.width;
+      _screenHeightPx = size.height;
+    } catch (_) {
+      // Keep the last known physical display size if the platform is busy.
     }
     notifyListeners();
   }
