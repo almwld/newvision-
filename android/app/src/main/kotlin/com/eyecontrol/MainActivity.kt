@@ -13,6 +13,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.eyecontrol.core.constants.DwellConfiguration
 import com.eyecontrol.core.constants.NativeConstants
+import com.eyecontrol.core.platform.ScreenGeometry
 import com.eyecontrol.core.logging.AppLogger
 import com.eyecontrol.data.calibration.CalibrationFeatureSample
 import com.eyecontrol.data.calibration.CalibrationSample
@@ -159,10 +160,10 @@ class MainActivity : FlutterActivity() {
                                 },
                             )
                         }
-                        "screen.size" -> result.success(mapOf(
-                            "width" to resources.displayMetrics.widthPixels,
-                            "height" to resources.displayMetrics.heightPixels,
-                        ))
+                        "screen.size" -> {
+                            val metrics = ScreenGeometry.realMetrics(this)
+                            result.success(mapOf("width" to metrics.widthPixels, "height" to metrics.heightPixels))
+                        }
                         "calibration.isReady" -> result.success(calibrationRepository.hasActiveModel())
                         "calibration.fit" -> {
                             @Suppress("UNCHECKED_CAST")
