@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../providers/tracking_provider.dart';
 import '../providers/permission_provider.dart';
@@ -58,6 +59,12 @@ class TrackingPage extends StatelessWidget {
       if (tracking.error != null) ...[const SizedBox(height: 14), Text(tracking.error!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.red))],
       const SizedBox(height: 28),
       FilledButton.icon(onPressed: tracking.start, icon: const Icon(Icons.play_arrow_rounded, size: 28), label: const Text('بدء التتبع', style: TextStyle(fontSize: 19)), style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 42, vertical: 18))),
+      const SizedBox(height: 10),
+      OutlinedButton.icon(
+        onPressed: () => context.push('/calibration'),
+        icon: const Icon(Icons.center_focus_strong_rounded),
+        label: const Text('معايرة النظر (9 نقاط)'),
+      ),
     ]))),
   );
 
