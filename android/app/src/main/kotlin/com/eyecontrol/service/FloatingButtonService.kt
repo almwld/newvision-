@@ -119,7 +119,7 @@ class FloatingButtonService : Service() {
                 }
                 setOnClickListener {
                     sendBroadcast(Intent(action).setPackage(packageName))
-                    panel.visibility = View.GONE
+                    setMenuOpen(false)
                 }
                 layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
                     bottomMargin = (6 * density).toInt()
@@ -142,26 +142,33 @@ class FloatingButtonService : Service() {
         actions.addView(actionButton("تمرير لليسار", ACTION_SCROLL_LEFT))
         actions.addView(actionButton("إيقاف طارئ", ACTION_EMERGENCY, danger = true))
         val metrics = resources.displayMetrics
-        val availableDp = metrics.heightPixels / density
-        val maxActionsHeight = (availableDp - 58f - 80f).coerceIn(160f, 350f)
-        panel.addView(ScrollView(this).apply {
+        val screenHeight = metrics.heightPixels
+        val availableDp = screenHeight / density
+        val maxActionsHeight = (availableDp - 58f - 80f).coerceIn(100f, 350f)
+        val actionScroll = ScrollView(this).apply {
             isFillViewport = true
             isVerticalScrollBarEnabled = false
             addView(actions)
-        }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (maxActionsHeight * density).toInt()))
+        }
+        panel.addView(
+            actionScroll,
+            LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                (maxActionsHeight * density).toInt(),
+            ),
+        )
 
+        val gapPx = (8 * density).toInt()
+        val panelChromePx = (62 * density).toInt()
+        val desiredPanelHeightPx = (maxActionsHeight * density).toInt() + panelChromePx
         container.addView(panel, FrameLayout.LayoutParams(panelWidth, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.TOP or Gravity.LEFT).apply {
-            topMargin = buttonSize + (8 * density).toInt()
+            topMargin = buttonSize + gapPx
         })
         container.addView(button, FrameLayout.LayoutParams(buttonSize, buttonSize, Gravity.TOP or Gravity.LEFT))
 
         val windowWidth = panelWidth
-        val screenHeight = resources.displayMetrics.heightPixels
-        val maxPanelDp = (screenHeight / density - 58f - 80f).coerceAtMost(350f).coerceAtLeast(160f)
-        val windowHeight = (buttonSize + (66 * density).toInt() + (maxPanelDp * density).toInt())
-            .coerceAtMost((screenHeight - (8 * density).toInt()).coerceAtLeast(buttonSize))
         params = WindowManager.LayoutParams(
-            windowWidth, windowHeight,
+            windowWidth, buttonSize,
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY else WindowManager.LayoutParams.TYPE_PHONE,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
             PixelFormat.TRANSLUCENT,
@@ -171,7 +178,57 @@ class FloatingButtonService : Service() {
             y = ((screenHeight - windowHeight) * 0.30f).toInt().coerceAtLeast(0)
         }
 
-        button.setOnTouchListener(FloatingTouchListener(button, panel, container))
+        var menuOpenAbove = false
+        fun setMenuOpen(open: Boolean) {
+            val p = params ?: return
+            val buttonLayout = button.layoutParams as FrameLayout.LayoutParams
+            val panelLayout = panel.layoutParams as FrameLayout.LayoutParams
+            if (!open) {
+                if (panel.visibility == View.VISIBLE && menuOpenAbove) {
+                    p.y = (p.y + buttonLayout.topMargin).coerceAtMost(screenHeight - buttonSize)
+                }
+                panel.visibility = View.GONE
+                menuOpenAbove = false
+                buttonLayout.topMargin = 0
+                panelLayout.topMargin = buttonSize + gapPx
+                actionScroll.layoutParams = (actionScroll.layoutParams as LinearLayout.LayoutParams).apply {
+                    height = (maxActionsHeight * density).toInt()
+                }
+                p.height = buttonSize
+            } else {
+                val buttonScreenY = if (menuOpenAbove) p.y + buttonLayout.topMargin else p.y
+                val below = screenHeight - (buttonScreenY + buttonSize + gapPx)
+                val above = buttonScreenY - gapPx
+                val openAbove = below < desiredPanelHeightPx && above > below
+                val available = if (openAbove) above else below
+                val panelHeight = desiredPanelHeightPx.coerceAtMost(
+                    available.coerceAtLeast((100 * density).toInt()),
+                )
+                val scrollHeight = (panelHeight - panelChromePx).coerceAtLeast((60 * density).toInt())
+                actionScroll.layoutParams = (actionScroll.layoutParams as LinearLayout.LayoutParams).apply {
+                    height = scrollHeight
+                }
+                menuOpenAbove = openAbove
+                panel.visibility = View.VISIBLE
+                if (openAbove) {
+                    panelLayout.topMargin = 0
+                    buttonLayout.topMargin = panelHeight + gapPx
+                    p.y = (buttonScreenY - panelHeight - gapPx).coerceAtLeast(0)
+                } else {
+                    panelLayout.topMargin = buttonSize + gapPx
+                    buttonLayout.topMargin = 0
+                    p.y = buttonScreenY.coerceAtMost(
+                        (screenHeight - buttonSize - gapPx - panelHeight).coerceAtLeast(0),
+                    )
+                }
+                p.height = buttonSize + gapPx + panelHeight
+            }
+            button.layoutParams = buttonLayout
+            panel.layoutParams = panelLayout
+            runCatching { windowManager.updateViewLayout(container, p) }
+        }
+
+        button.setOnTouchListener(FloatingTouchListener(button, panel, container) { setMenuOpen(it) })
         windowManager.addView(container, params)
         floatingView = container
         buttonView = button
@@ -182,6 +239,7 @@ class FloatingButtonService : Service() {
         private val button: ImageView,
         private val panel: LinearLayout,
         private val container: View,
+        private val setMenuOpen: (Boolean) -> Unit,
     ) : View.OnTouchListener {
         private var initialX = 0
         private var initialY = 0
@@ -194,6 +252,7 @@ class FloatingButtonService : Service() {
             val p = params ?: return false
             when (event.actionMasked) {
                 MotionEvent.ACTION_DOWN -> {
+                    if (panel.visibility == View.VISIBLE) setMenuOpen(false)
                     initialX = p.x
                     initialY = p.y
                     touchX = event.rawX
@@ -220,7 +279,7 @@ class FloatingButtonService : Service() {
                         if (elapsed > 850) {
                             sendBroadcast(Intent(ACTION_EMERGENCY).setPackage(packageName))
                         } else {
-                            panel.visibility = if (panel.visibility == View.VISIBLE) View.GONE else View.VISIBLE
+                            setMenuOpen(panel.visibility != View.VISIBLE)
                         }
                     } else {
                         val metrics = resources.displayMetrics
