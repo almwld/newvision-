@@ -52,7 +52,9 @@ class ProcessGazeUseCase(
                 .coerceIn(0f, (screenWidth - 1).coerceAtLeast(0).toFloat()),
             yPx = (normalized.second.coerceIn(0f, 1f) * screenHeight)
                 .coerceIn(0f, (screenHeight - 1).coerceAtLeast(0).toFloat()),
-            confidence = (sample.gazeConfidence ?: sample.confidence).coerceIn(0f, 1f),
+            // L2CS peak probability is not a calibrated quality score. Match Mudabbir's
+            // interaction confidence to eye openness and bilateral consistency.
+            confidence = sample.confidence.coerceIn(0f, 1f),
             isBlinking = false,
             timestampNs = sample.timestampNs,
         )
