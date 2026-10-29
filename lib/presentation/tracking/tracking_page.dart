@@ -156,10 +156,10 @@ class TrackingPage extends StatelessWidget {
                       textDirection: TextDirection.rtl,
                       style: const TextStyle(color: Colors.white70, fontSize: 12),
                     ),
-                    Text(
+                    const Text(
                       'المعالجة محلية • لا تُحفظ الصور ولا تُرفع',
                       textDirection: TextDirection.rtl,
-                      style: const TextStyle(color: Colors.white70, fontSize: 12),
+                      style: TextStyle(color: Colors.white70, fontSize: 12),
                     ),
                     Text(
                       gaze == null
