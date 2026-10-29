@@ -68,17 +68,21 @@ class TrackingPage extends StatelessWidget {
 
   Widget _buildWaitingScreen(BuildContext context, TrackingProvider tracking) => Scaffold(
     appBar: AppBar(title: const Text('تتبع النظر')),
-    body: Center(child: Padding(padding: const EdgeInsets.all(28), child: Column(mainAxisSize: MainAxisSize.min, children: [
-      const Icon(Icons.visibility_outlined, size: 78, color: Color(0xFF0A8F83)),
-      const SizedBox(height: 18),
-      const Text('التتبع يعمل', style: TextStyle(fontSize: 23, fontWeight: FontWeight.bold)),
-      const SizedBox(height: 8),
-      const Text('في انتظار قراءة موثوقة من العين. أبقِ الوجه أمام الكاميرا وفي إضاءة جيدة.', textAlign: TextAlign.center),
-      const SizedBox(height: 24),
-      if (tracking.error != null) Text(tracking.error!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.red)),
-      const SizedBox(height: 12),
-      OutlinedButton.icon(onPressed: tracking.stop, icon: const Icon(Icons.stop), label: const Text('إيقاف التتبع')),
-    ]))),
+    body: Stack(fit: StackFit.expand, children: [
+      const AndroidView(viewType: 'com.eyecontrol/camera_preview'),
+      const ColoredBox(color: Color(0x770A1720)),
+      Center(child: Padding(padding: const EdgeInsets.all(28), child: Column(mainAxisSize: MainAxisSize.min, children: [
+        const Icon(Icons.visibility_outlined, size: 78, color: Color(0xFF55D6C8)),
+        const SizedBox(height: 18),
+        const Text('التتبع يعمل', style: TextStyle(fontSize: 23, fontWeight: FontWeight.bold, color: Colors.white)),
+        const SizedBox(height: 8),
+        const Text('في انتظار قراءة موثوقة من العين. أبقِ الوجه أمام الكاميرا وفي إضاءة جيدة.', textAlign: TextAlign.center, style: TextStyle(color: Colors.white)),
+        const SizedBox(height: 24),
+        if (tracking.error != null) Text(tracking.error!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.redAccent)),
+        const SizedBox(height: 12),
+        OutlinedButton.icon(onPressed: tracking.stop, icon: const Icon(Icons.stop), label: const Text('إيقاف التتبع')),
+      ]))),
+    ]),
   );
 
   Widget _buildRunningScreen(BuildContext context, TrackingProvider tracking) {
@@ -101,7 +105,8 @@ class TrackingPage extends StatelessWidget {
         final cursorX = (screenX - 15).clamp(0.0, (constraints.maxWidth - 30).clamp(0.0, double.infinity)).toDouble();
         final cursorY = (screenY - 15).clamp(0.0, (constraints.maxHeight - 30).clamp(0.0, double.infinity)).toDouble();
         return Stack(fit: StackFit.expand, children: [
-          const ColoredBox(color: Color(0xFFF4F6F7)),
+          const AndroidView(viewType: 'com.eyecontrol/camera_preview'),
+          const ColoredBox(color: Color(0x330A1720)),
           Positioned.fill(child: CustomPaint(painter: _TrackingGridPainter())),
           Positioned(left: 14, right: 14, top: 14, child: Card(
             color: const Color(0xEE1E293B),
