@@ -41,6 +41,16 @@ class TrackingPage extends StatelessWidget {
       if (!p.overlay) ...[FilledButton.icon(onPressed: p.requestOverlay, icon: const Icon(Icons.layers_outlined), label: const Text('السماح بالظهور فوق التطبيقات')), const SizedBox(height: 10)],
       if (!p.accessibility) ...[FilledButton.icon(onPressed: p.requestAccessibility, icon: const Icon(Icons.accessibility_new_rounded), label: const Text('تفعيل خدمة إمكانية الوصول')), const SizedBox(height: 10)],
       if (!p.notifications) OutlinedButton.icon(onPressed: p.requestNotifications, icon: const Icon(Icons.notifications_active_outlined), label: const Text('السماح بإشعارات التتبع')),
+      const SizedBox(height: 10),
+      OutlinedButton.icon(
+        onPressed: () async {
+          await context.push('/calibration');
+          await p.refresh();
+          await context.read<TrackingProvider>().refreshCalibrationState();
+        },
+        icon: const Icon(Icons.center_focus_strong_rounded),
+        label: const Text('معايرة النظر (9 نقاط)'),
+      ),
       if (p.error != null) ...[const SizedBox(height: 12), Text(p.error!, textAlign: TextAlign.center, style: TextStyle(color: Theme.of(context).colorScheme.error))],
       const SizedBox(height: 16),
       OutlinedButton.icon(onPressed: p.refresh, icon: const Icon(Icons.refresh), label: const Text('إعادة التحقق من الأذونات')),
