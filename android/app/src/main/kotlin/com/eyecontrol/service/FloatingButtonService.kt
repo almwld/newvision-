@@ -147,7 +147,7 @@ class FloatingButtonService : Service() {
         actions.addView(actionButton("تمرير لليمين", ACTION_SCROLL_RIGHT))
         actions.addView(actionButton("تمرير لليسار", ACTION_SCROLL_LEFT))
         actions.addView(actionButton("إيقاف طارئ", ACTION_EMERGENCY, danger = true))
-        val metrics = resources.displayMetrics
+        val metrics = ScreenGeometry.realMetrics(this)
         val screenHeight = metrics.heightPixels
         val availableDp = screenHeight / density
         val maxActionsHeight = (availableDp - 58f - 80f).coerceIn(100f, 350f)
@@ -286,7 +286,7 @@ class FloatingButtonService : Service() {
                     val dy = event.rawY - touchY
                     if (kotlin.math.abs(dx) > 9 * density || kotlin.math.abs(dy) > 9 * density) dragging = true
                     if (dragging) {
-                        val metrics = resources.displayMetrics
+                        val metrics = ScreenGeometry.realMetrics(this)
                         p.x = (initialX + dx.toInt()).coerceIn(0, (metrics.widthPixels - p.width).coerceAtLeast(0))
                         p.y = (initialY + dy.toInt()).coerceIn(0, (metrics.heightPixels - p.height).coerceAtLeast(0))
                         runCatching { windowManager.updateViewLayout(container, p) }
@@ -302,7 +302,7 @@ class FloatingButtonService : Service() {
                             setMenuOpen(panel.visibility != View.VISIBLE)
                         }
                     } else {
-                        val metrics = resources.displayMetrics
+                        val metrics = ScreenGeometry.realMetrics(this)
                         val rightSide = p.x + buttonSize / 2 > metrics.widthPixels / 2
                         dockedRight = rightSide
                         p.width = buttonSize
